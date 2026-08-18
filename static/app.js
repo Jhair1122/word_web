@@ -1,5 +1,3 @@
-const STORAGE_KEY = "pangoa_word_pages_v2";
-
 const emptyItem = () => ({ subserie: "", descripcion: "", folio: "" });
 const emptyPage = () => ({
   id: "",
@@ -15,11 +13,8 @@ const emptyPage = () => ({
   anio: "2019"
 });
 
-let pages = loadPages();
+let pages = [];
 let current = 0;
-
-if (!pages.length) pages = [emptyPage()];
-pages = pages.map(normalizePage);
 
 const form = document.getElementById("pageForm");
 const pagesList = document.getElementById("pagesList");
@@ -63,12 +58,25 @@ function showConfirm(message) {
   });
 }
 
-function loadPages() {
+async function fetchPages() {
+  const response = await fetch("/paginas");
+  if (!response.ok) throw new Error("No se pudieron cargar las páginas.");
+  const data = await response.json();
+  return Array.isArray(data.pages) ? data.pages : [];
+}
+
+async function persist() {
+  statusEl.textContent = "Guardando...";
   try {
-    const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("pangoa_word_pages_v1");
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
+    const response = await fetch("/paginas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pages })
+    });
+    if (!response.ok) throw new Error("Error al guardar");
+    statusEl.textContent = "Guardado en la nube";
+  } catch (err) {
+    statusEl.textContent = "⚠ Error al guardar (revisa tu conexión)";
   }
 }
 
@@ -100,11 +108,6 @@ function normalizePage(page) {
   };
 }
 
-function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
-  statusEl.textContent = "Guardado localmente";
-}
-
 function collectFormData() {
   const data = {
     id: form.elements.id.value,
@@ -132,9 +135,9 @@ function collectFormData() {
   return data;
 }
 
-function saveCurrent() {
+async function saveCurrent() {
   pages[current] = collectFormData();
-  persist();
+  await persist();
   renderPages();
 }
 
@@ -163,7 +166,7 @@ function addItem(item = emptyItem()) {
   card.querySelector('[data-field="folio"]').value = item.folio ?? "";
   card.querySelector('[data-field="descripcion"]').value = item.descripcion ?? "";
 
-  card.querySelector(".remove-item").addEventListener("click", () => {
+  card.querySelector(".remove-item").addEventListener("click", async () => {
     const cards = itemsContainer.querySelectorAll(".item-card");
     if (cards.length === 1) {
       card.querySelectorAll("input, textarea").forEach(input => input.value = "");
@@ -171,7 +174,7 @@ function addItem(item = emptyItem()) {
       card.remove();
     }
     renumberItems();
-    saveCurrent();
+    await saveCurrent();
   });
 
   card.querySelectorAll("input, textarea").forEach(input => {
@@ -229,22 +232,22 @@ function renderPages() {
     removeBtn.className = "page-remove";
     removeBtn.title = "Eliminar esta página";
     removeBtn.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    if (pages.length === 1) {
+      e.stopPropagation();
+      if (pages.length === 1) {
         const ok = await showConfirm("¿Vaciar el contenido de esta página?");
         if (!ok) return;
         pages[0] = emptyPage();
-    } else {
+      } else {
         const ok = await showConfirm(`¿Eliminar la página ${index + 1}?`);
         if (!ok) return;
         pages.splice(index, 1);
         if (current >= pages.length) current = pages.length - 1;
         else if (index < current) current--;
-    }
-    persist();
-    fillForm(pages[current]);
-    renderPages();
-});
+      }
+      await persist();
+      fillForm(pages[current]);
+      renderPages();
+    });
 
     const row = document.createElement("div");
     row.style.display = "flex";
@@ -255,43 +258,43 @@ function renderPages() {
     row.append(textWrap, removeBtn);
 
     button.appendChild(row);
-    button.addEventListener("click", () => {
-        saveCurrent();
-        current = index;
-        fillForm(pages[current]);
-        renderPages();
+    button.addEventListener("click", async () => {
+      await saveCurrent();
+      current = index;
+      fillForm(pages[current]);
+      renderPages();
     });
     pagesList.appendChild(button);
-    });
+  });
 }
 
 function handleFormInput() {
   pages[current] = collectFormData();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
   statusEl.textContent = "Guardando...";
   clearTimeout(window.saveTimer);
-  window.saveTimer = setTimeout(() => {
-    statusEl.textContent = "Guardado localmente";
+  window.saveTimer = setTimeout(async () => {
+    await persist();
     renderPages();
-  }, 250);
+  }, 500);
 }
 
 form.querySelectorAll("input, textarea").forEach(input => input.addEventListener("input", handleFormInput));
-document.getElementById("addItemBtn").addEventListener("click", () => {
+
+document.getElementById("addItemBtn").addEventListener("click", async () => {
   addItem();
-  saveCurrent();
+  await saveCurrent();
 });
 
-document.getElementById("nextBtn").addEventListener("click", () => {
-  saveCurrent();
+document.getElementById("nextBtn").addEventListener("click", async () => {
+  await saveCurrent();
   if (current === pages.length - 1) pages.push(emptyPage());
   current++;
   fillForm(pages[current]);
   renderPages();
 });
 
-document.getElementById("prevBtn").addEventListener("click", () => {
-  saveCurrent();
+document.getElementById("prevBtn").addEventListener("click", async () => {
+  await saveCurrent();
   if (current > 0) {
     current--;
     fillForm(pages[current]);
@@ -299,8 +302,8 @@ document.getElementById("prevBtn").addEventListener("click", () => {
   }
 });
 
-document.getElementById("newPageBtn").addEventListener("click", () => {
-  saveCurrent();
+document.getElementById("newPageBtn").addEventListener("click", async () => {
+  await saveCurrent();
   pages.push(emptyPage());
   current = pages.length - 1;
   fillForm(pages[current]);
@@ -312,7 +315,7 @@ document.getElementById("deletePageBtn").addEventListener("click", async () => {
     const ok = await showConfirm("¿Vaciar el contenido de esta página?");
     if (!ok) return;
     pages[0] = emptyPage();
-    persist();
+    await persist();
     fillForm(pages[0]);
     renderPages();
     return;
@@ -324,7 +327,7 @@ document.getElementById("deletePageBtn").addEventListener("click", async () => {
   pages.splice(current, 1);
   if (current >= pages.length) current = pages.length - 1;
 
-  persist();
+  await persist();
   fillForm(pages[current]);
   renderPages();
 });
@@ -336,13 +339,13 @@ document.getElementById("clearAllBtn").addEventListener("click", async () => {
   pages = [emptyPage()];
   current = 0;
 
-  persist();
+  await persist();
   fillForm(pages[0]);
   renderPages();
 });
 
 async function downloadWord() {
-  saveCurrent();
+  await saveCurrent();
   const validPages = pages.filter(p => {
     const items = Array.isArray(p.items) ? p.items : [];
     return [p.id, p.caja, p.cod_serie, p.sobre, p.codigo, p.seccion, p.serie_doc, p.fecha_inicio, p.fecha_final, p.anio]
@@ -384,9 +387,9 @@ async function downloadWord() {
 document.getElementById("downloadBtn").addEventListener("click", downloadWord);
 document.getElementById("downloadBtn2").addEventListener("click", downloadWord);
 
-document.getElementById("saveJsonBtn").addEventListener("click", () => {
-  saveCurrent();
-  const blob = new Blob([JSON.stringify({pages}, null, 2)], {type: "application/json"});
+document.getElementById("saveJsonBtn").addEventListener("click", async () => {
+  await saveCurrent();
+  const blob = new Blob([JSON.stringify({ pages }, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -406,14 +409,31 @@ document.getElementById("loadJsonInput").addEventListener("change", async (event
     pages = data.pages.map(normalizePage);
     current = 0;
     fillForm(pages[0]);
-    persist();
+    await persist();
     renderPages();
-    alert("Respaldo cargado correctamente.");
+    alert("Respaldo cargado y guardado en la nube correctamente.");
   } catch (error) {
     alert("No se pudo cargar el respaldo: " + error.message);
   }
   event.target.value = "";
 });
 
-fillForm(pages[current]);
-renderPages();
+async function init() {
+  statusEl.textContent = "Cargando...";
+  try {
+    pages = await fetchPages();
+  } catch {
+    pages = [];
+    statusEl.textContent = "⚠ No se pudo conectar. Intenta recargar la página.";
+  }
+
+  if (!pages.length) pages = [emptyPage()];
+  pages = pages.map(normalizePage);
+  current = 0;
+
+  fillForm(pages[current]);
+  renderPages();
+  if (statusEl.textContent === "Cargando...") statusEl.textContent = "Guardado en la nube";
+}
+
+init();
