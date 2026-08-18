@@ -1,3 +1,10 @@
+import os
+from supabase import create_client, Client
+
+SUPABASE_URL = os.environ.get("https://wojinjaczmwlojihoebp.supabase.co")
+SUPABASE_KEY = os.environ.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvamluamFjem13bG9qaWhvZWJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwODQ2MzgsImV4cCI6MjEwMjY2MDYzOH0.VY5RVZVJMgDoYl-4BoAwe4h0IrKoHv_wJvpMdSjVdr4")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 from flask import Flask, render_template, request, send_file, jsonify
 from docx import Document
 from docx.oxml import OxmlElement
@@ -295,6 +302,35 @@ def generar():
 @app.get("/salud")
 def salud():
     return jsonify({"ok": True})
+
+@app.get("/paginas")
+def obtener_paginas():
+    try:
+        response = supabase.table("pages").select("*").order("orden").execute()
+        return jsonify({"pages": [row["data"] for row in response.data]})
+    except Exception as exc:
+        return jsonify({"error": f"No se pudieron obtener las páginas: {exc}"}), 500
+
+
+@app.post("/paginas")
+def guardar_paginas():
+    payload = request.get_json(silent=True) or {}
+    entries = payload.get("pages", [])
+
+    if not isinstance(entries, list):
+        return jsonify({"error": "Formato inválido."}), 400
+
+    try:
+        # Reemplaza todas las páginas: borra lo existente y vuelve a insertar en orden.
+        supabase.table("pages").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+
+        if entries:
+            rows = [{"orden": i, "data": entry} for i, entry in enumerate(entries)]
+            supabase.table("pages").insert(rows).execute()
+
+        return jsonify({"ok": True})
+    except Exception as exc:
+        return jsonify({"error": f"No se pudieron guardar las páginas: {exc}"}), 500
 
 
 if __name__ == "__main__":
