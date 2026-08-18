@@ -28,6 +28,41 @@ const pageCount = document.getElementById("pageCount");
 const statusEl = document.getElementById("status");
 const itemsContainer = document.getElementById("itemsContainer");
 
+const confirmModal = document.getElementById("confirmModal");
+const confirmMessage = document.getElementById("confirmMessage");
+const confirmOkBtn = document.getElementById("confirmOkBtn");
+const confirmCancelBtn = document.getElementById("confirmCancelBtn");
+
+function showConfirm(message) {
+  return new Promise((resolve) => {
+    confirmMessage.textContent = message;
+    confirmModal.hidden = false;
+    confirmOkBtn.focus();
+
+    const cleanup = (result) => {
+      confirmModal.hidden = true;
+      confirmOkBtn.removeEventListener("click", onOk);
+      confirmCancelBtn.removeEventListener("click", onCancel);
+      confirmModal.removeEventListener("click", onOverlayClick);
+      document.removeEventListener("keydown", onKeydown);
+      resolve(result);
+    };
+
+    const onOk = () => cleanup(true);
+    const onCancel = () => cleanup(false);
+    const onOverlayClick = (e) => { if (e.target === confirmModal) cleanup(false); };
+    const onKeydown = (e) => {
+      if (e.key === "Escape") cleanup(false);
+      if (e.key === "Enter") cleanup(true);
+    };
+
+    confirmOkBtn.addEventListener("click", onOk);
+    confirmCancelBtn.addEventListener("click", onCancel);
+    confirmModal.addEventListener("click", onOverlayClick);
+    document.addEventListener("keydown", onKeydown);
+  });
+}
+
 function loadPages() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("pangoa_word_pages_v1");
@@ -189,16 +224,45 @@ function renderPages() {
     const desc = firstItem.descripcion || "Sin descripción";
     description.textContent = `${firstItem.subserie ? firstItem.subserie + " · " : ""}${desc}${page.items.length > 1 ? ` · +${page.items.length - 1} cuadro(s)` : ""}`;
 
-    button.append(title, description);
-    button.addEventListener("click", () => {
-      saveCurrent();
-      current = index;
-      fillForm(pages[current]);
-      renderPages();
-    });
+    const removeBtn = document.createElement("span");
+    removeBtn.textContent = "✕";
+    removeBtn.className = "page-remove";
+    removeBtn.title = "Eliminar esta página";
+    removeBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    if (pages.length === 1) {
+        const ok = await showConfirm("¿Vaciar el contenido de esta página?");
+        if (!ok) return;
+        pages[0] = emptyPage();
+    } else {
+        const ok = await showConfirm(`¿Eliminar la página ${index + 1}?`);
+        if (!ok) return;
+        pages.splice(index, 1);
+        if (current >= pages.length) current = pages.length - 1;
+        else if (index < current) current--;
+    }
+    persist();
+    fillForm(pages[current]);
+    renderPages();
+});
 
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.justifyContent = "space-between";
+    row.style.alignItems = "flex-start";
+    const textWrap = document.createElement("div");
+    textWrap.append(title, description);
+    row.append(textWrap, removeBtn);
+
+    button.appendChild(row);
+    button.addEventListener("click", () => {
+        saveCurrent();
+        current = index;
+        fillForm(pages[current]);
+        renderPages();
+    });
     pagesList.appendChild(button);
-  });
+    });
 }
 
 function handleFormInput() {
@@ -240,6 +304,40 @@ document.getElementById("newPageBtn").addEventListener("click", () => {
   pages.push(emptyPage());
   current = pages.length - 1;
   fillForm(pages[current]);
+  renderPages();
+});
+
+document.getElementById("deletePageBtn").addEventListener("click", async () => {
+  if (pages.length === 1) {
+    const ok = await showConfirm("¿Vaciar el contenido de esta página?");
+    if (!ok) return;
+    pages[0] = emptyPage();
+    persist();
+    fillForm(pages[0]);
+    renderPages();
+    return;
+  }
+
+  const ok = await showConfirm(`¿Eliminar la página ${current + 1}? Esta acción no se puede deshacer.`);
+  if (!ok) return;
+
+  pages.splice(current, 1);
+  if (current >= pages.length) current = pages.length - 1;
+
+  persist();
+  fillForm(pages[current]);
+  renderPages();
+});
+
+document.getElementById("clearAllBtn").addEventListener("click", async () => {
+  const ok = await showConfirm("¿Borrar TODAS las páginas y empezar un documento nuevo desde cero? Esta acción no se puede deshacer.");
+  if (!ok) return;
+
+  pages = [emptyPage()];
+  current = 0;
+
+  persist();
+  fillForm(pages[0]);
   renderPages();
 });
 
