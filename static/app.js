@@ -15,18 +15,71 @@ const emptyPage = () => ({
 
 let pages = [];
 let current = 0;
+let searchQuery = "";
+let lastDeleted = null; // { type: 'single' | 'clear', page?, index?, pages? }
+let undoTimer = null;
 
 const form = document.getElementById("pageForm");
 const pagesList = document.getElementById("pagesList");
 const currentNumber = document.getElementById("currentNumber");
+const totalPagesEl = document.getElementById("totalPages");
 const pageCount = document.getElementById("pageCount");
 const statusEl = document.getElementById("status");
+const statusIconEl = document.getElementById("statusIconEl");
+const statusTextEl = document.getElementById("statusTextEl");
 const itemsContainer = document.getElementById("itemsContainer");
+const pageSearch = document.getElementById("pageSearch");
 
 const confirmModal = document.getElementById("confirmModal");
 const confirmMessage = document.getElementById("confirmMessage");
 const confirmOkBtn = document.getElementById("confirmOkBtn");
 const confirmCancelBtn = document.getElementById("confirmCancelBtn");
+
+const previewModal = document.getElementById("previewModal");
+const previewTableWrap = document.getElementById("previewTableWrap");
+const previewBtn = document.getElementById("previewBtn");
+const previewCloseBtn = document.getElementById("previewCloseBtn");
+
+const undoToast = document.getElementById("undoToast");
+const undoMessage = document.getElementById("undoMessage");
+const undoBtn = document.getElementById("undoBtn");
+
+const themeToggleBtn = document.getElementById("themeToggleBtn");
+
+/* ---------- Estado / textos ---------- */
+
+const STATUS = {
+  loading: { icon: "⏳", text: "Cargando desde la base de datos...", cls: "" },
+  saving: { icon: "💾", text: "Guardando en Supabase...", cls: "status-saving" },
+  saved: { icon: "✅", text: "Guardado en Supabase", cls: "" },
+  error: { icon: "⚠️", text: "Error de conexión — revisa tu internet", cls: "status-error" }
+};
+
+function setStatus(key) {
+  const s = STATUS[key];
+  statusIconEl.textContent = s.icon;
+  statusTextEl.textContent = s.text;
+  statusEl.className = "status" + (s.cls ? " " + s.cls : "");
+}
+
+/* ---------- Tema (preferencia visual local, no son datos del documento) ---------- */
+
+function initTheme() {
+  const saved = localStorage.getItem("pangoa_theme");
+  const theme = saved === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", theme);
+  themeToggleBtn.textContent = theme === "dark" ? "☀️" : "🌙";
+}
+
+themeToggleBtn.addEventListener("click", () => {
+  const current = document.documentElement.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("pangoa_theme", next);
+  themeToggleBtn.textContent = next === "dark" ? "☀️" : "🌙";
+});
+
+/* ---------- Modal de confirmación ---------- */
 
 function showConfirm(message) {
   return new Promise((resolve) => {
@@ -58,6 +111,39 @@ function showConfirm(message) {
   });
 }
 
+/* ---------- Deshacer último borrado ---------- */
+
+function showUndoToast(message) {
+  clearTimeout(undoTimer);
+  undoMessage.textContent = message;
+  undoToast.hidden = false;
+  undoTimer = setTimeout(() => {
+    undoToast.hidden = true;
+    lastDeleted = null;
+  }, 6000);
+}
+
+undoBtn.addEventListener("click", async () => {
+  if (!lastDeleted) return;
+  clearTimeout(undoTimer);
+  undoToast.hidden = true;
+
+  if (lastDeleted.type === "single") {
+    pages.splice(lastDeleted.index, 0, lastDeleted.page);
+    current = lastDeleted.index;
+  } else if (lastDeleted.type === "clear") {
+    pages = lastDeleted.pages;
+    current = 0;
+  }
+  lastDeleted = null;
+
+  await persist();
+  fillForm(pages[current]);
+  renderPages();
+});
+
+/* ---------- Red / persistencia ---------- */
+
 async function fetchPages() {
   const response = await fetch("/paginas");
   if (!response.ok) throw new Error("No se pudieron cargar las páginas.");
@@ -66,7 +152,7 @@ async function fetchPages() {
 }
 
 async function persist() {
-  statusEl.textContent = "Guardando...";
+  setStatus("saving");
   try {
     const response = await fetch("/paginas", {
       method: "POST",
@@ -74,11 +160,13 @@ async function persist() {
       body: JSON.stringify({ pages })
     });
     if (!response.ok) throw new Error("Error al guardar");
-    statusEl.textContent = "Guardado en la nube";
+    setStatus("saved");
   } catch (err) {
-    statusEl.textContent = "⚠ Error al guardar (revisa tu conexión)";
+    setStatus("error");
   }
 }
+
+/* ---------- Normalización y formulario ---------- */
 
 function normalizePage(page) {
   const items = Array.isArray(page.items) && page.items.length
@@ -207,17 +295,39 @@ function fillForm(data) {
   itemsContainer.innerHTML = "";
   data.items.forEach(item => addItem(item));
   currentNumber.textContent = current + 1;
+  totalPagesEl.textContent = pages.length;
 }
+
+/* ---------- Lista de páginas: buscador + arrastrar para reordenar ---------- */
+
+function pageMatchesSearch(page, query) {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  const first = page.items[0] || emptyItem();
+  const haystack = [
+    page.id, page.sobre, page.cod_serie, page.codigo,
+    first.subserie, first.descripcion, first.folio
+  ].join(" ").toLowerCase();
+  return haystack.includes(q);
+}
+
+let dragFromIndex = null;
 
 function renderPages() {
   pageCount.textContent = pages.length;
+  totalPagesEl.textContent = pages.length;
   pagesList.innerHTML = "";
 
-  pages.forEach((page, index) => {
-    page = normalizePage(page);
+  const dragEnabled = searchQuery === "";
+
+  pages.forEach((rawPage, index) => {
+    const page = normalizePage(rawPage);
+    if (!pageMatchesSearch(page, searchQuery)) return;
+
     const button = document.createElement("button");
     button.className = "page-item" + (index === current ? " active" : "");
     button.type = "button";
+    button.draggable = dragEnabled;
 
     const firstItem = page.items[0] || emptyItem();
     const title = document.createElement("strong");
@@ -237,10 +347,13 @@ function renderPages() {
         const ok = await showConfirm("¿Vaciar el contenido de esta página?");
         if (!ok) return;
         pages[0] = emptyPage();
+        lastDeleted = null;
       } else {
         const ok = await showConfirm(`¿Eliminar la página ${index + 1}?`);
         if (!ok) return;
-        pages.splice(index, 1);
+        const [removed] = pages.splice(index, 1);
+        lastDeleted = { type: "single", page: removed, index };
+        showUndoToast(`Página ${index + 1} eliminada.`);
         if (current >= pages.length) current = pages.length - 1;
         else if (index < current) current--;
       }
@@ -264,13 +377,55 @@ function renderPages() {
       fillForm(pages[current]);
       renderPages();
     });
+
+    if (dragEnabled) {
+      button.addEventListener("dragstart", () => {
+        dragFromIndex = index;
+        button.classList.add("dragging");
+      });
+      button.addEventListener("dragend", () => {
+        button.classList.remove("dragging");
+      });
+      button.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        button.classList.add("drag-over");
+      });
+      button.addEventListener("dragleave", () => {
+        button.classList.remove("drag-over");
+      });
+      button.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        button.classList.remove("drag-over");
+        if (dragFromIndex === null || dragFromIndex === index) return;
+
+        const [moved] = pages.splice(dragFromIndex, 1);
+        pages.splice(index, 0, moved);
+
+        if (current === dragFromIndex) current = index;
+        else if (dragFromIndex < current && index >= current) current--;
+        else if (dragFromIndex > current && index <= current) current++;
+
+        dragFromIndex = null;
+        await persist();
+        fillForm(pages[current]);
+        renderPages();
+      });
+    }
+
     pagesList.appendChild(button);
   });
 }
 
+pageSearch.addEventListener("input", () => {
+  searchQuery = pageSearch.value.trim();
+  renderPages();
+});
+
+/* ---------- Guardado en tecleo ---------- */
+
 function handleFormInput() {
   pages[current] = collectFormData();
-  statusEl.textContent = "Guardando...";
+  setStatus("saving");
   clearTimeout(window.saveTimer);
   window.saveTimer = setTimeout(async () => {
     await persist();
@@ -279,6 +434,8 @@ function handleFormInput() {
 }
 
 form.querySelectorAll("input, textarea").forEach(input => input.addEventListener("input", handleFormInput));
+
+/* ---------- Botones principales ---------- */
 
 document.getElementById("addItemBtn").addEventListener("click", async () => {
   addItem();
@@ -310,11 +467,22 @@ document.getElementById("newPageBtn").addEventListener("click", async () => {
   renderPages();
 });
 
+document.getElementById("duplicatePageBtn").addEventListener("click", async () => {
+  pages[current] = collectFormData();
+  const copy = JSON.parse(JSON.stringify(pages[current]));
+  pages.splice(current + 1, 0, copy);
+  current = current + 1;
+  await persist();
+  fillForm(pages[current]);
+  renderPages();
+});
+
 document.getElementById("deletePageBtn").addEventListener("click", async () => {
   if (pages.length === 1) {
     const ok = await showConfirm("¿Vaciar el contenido de esta página?");
     if (!ok) return;
     pages[0] = emptyPage();
+    lastDeleted = null;
     await persist();
     fillForm(pages[0]);
     renderPages();
@@ -324,7 +492,9 @@ document.getElementById("deletePageBtn").addEventListener("click", async () => {
   const ok = await showConfirm(`¿Eliminar la página ${current + 1}? Esta acción no se puede deshacer.`);
   if (!ok) return;
 
-  pages.splice(current, 1);
+  const [removed] = pages.splice(current, 1);
+  lastDeleted = { type: "single", page: removed, index: current };
+  showUndoToast(`Página ${current + 1} eliminada.`);
   if (current >= pages.length) current = pages.length - 1;
 
   await persist();
@@ -336,6 +506,9 @@ document.getElementById("clearAllBtn").addEventListener("click", async () => {
   const ok = await showConfirm("¿Borrar TODAS las páginas y empezar un documento nuevo desde cero? Esta acción no se puede deshacer.");
   if (!ok) return;
 
+  lastDeleted = { type: "clear", pages: pages.map(normalizePage) };
+  showUndoToast("Se borraron todas las páginas.");
+
   pages = [emptyPage()];
   current = 0;
 
@@ -343,6 +516,49 @@ document.getElementById("clearAllBtn").addEventListener("click", async () => {
   fillForm(pages[0]);
   renderPages();
 });
+
+/* ---------- Vista previa ---------- */
+
+function buildPreviewTable() {
+  const rows = pages.map((raw, i) => {
+    const p = normalizePage(raw);
+    const foliosResumen = p.items.map(it => it.folio || "-").join(", ");
+    const descResumen = p.items.map(it => it.descripcion || "-").join(" | ");
+    return `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${p.sobre || "-"}</td>
+        <td>${p.id || "-"}</td>
+        <td>${p.seccion || "-"}</td>
+        <td>${p.fecha_inicio || "-"} → ${p.fecha_final || "-"}</td>
+        <td>${foliosResumen}</td>
+        <td>${descResumen}</td>
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <table class="preview-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Sobre</th><th>ID</th><th>Sección</th><th>Fechas</th><th>Folio(s)</th><th>Descripción</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+previewBtn.addEventListener("click", async () => {
+  await saveCurrent();
+  previewTableWrap.innerHTML = buildPreviewTable();
+  previewModal.hidden = false;
+});
+
+previewCloseBtn.addEventListener("click", () => { previewModal.hidden = true; });
+previewModal.addEventListener("click", (e) => { if (e.target === previewModal) previewModal.hidden = true; });
+
+/* ---------- Descargar / respaldo ---------- */
 
 async function downloadWord() {
   await saveCurrent();
@@ -418,13 +634,16 @@ document.getElementById("loadJsonInput").addEventListener("change", async (event
   event.target.value = "";
 });
 
+/* ---------- Inicio ---------- */
+
 async function init() {
-  statusEl.textContent = "Cargando...";
+  initTheme();
+  setStatus("loading");
   try {
     pages = await fetchPages();
   } catch {
     pages = [];
-    statusEl.textContent = "⚠ No se pudo conectar. Intenta recargar la página.";
+    setStatus("error");
   }
 
   if (!pages.length) pages = [emptyPage()];
@@ -433,7 +652,7 @@ async function init() {
 
   fillForm(pages[current]);
   renderPages();
-  if (statusEl.textContent === "Cargando...") statusEl.textContent = "Guardado en la nube";
+  if (statusTextEl.textContent === STATUS.loading.text) setStatus("saved");
 }
 
 init();
