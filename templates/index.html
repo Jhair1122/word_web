@@ -14,12 +14,11 @@
   </div>
   <div class="actions">
     <button id="themeToggleBtn" class="secondary" type="button" title="Cambiar tema">🌙</button>
-    <button id="excelImportBtn" class="secondary" type="button">📊 Importar Excel</button>
-    <button id="saveJsonBtn" class="secondary" type="button">Guardar respaldo</button>
+    <button id="saveJsonBtn" class="secondary">Guardar respaldo</button>
     <label class="secondary file-btn">Cargar respaldo
       <input id="loadJsonInput" type="file" accept=".json" hidden>
     </label>
-    <button id="downloadBtn" class="primary" type="button">Descargar Word</button>
+    <button id="downloadBtn" class="primary">Descargar Word</button>
   </div>
 </header>
 
@@ -104,19 +103,19 @@
       <span id="pageCount" class="count">1</span>
     </div>
 
-    <input type="text" id="pageSearch" class="search-input" placeholder="🔍 Buscar por sobre, caja, ID o descripción...">
+    <input type="text" id="pageSearch" class="search-input" placeholder="🔍 Buscar por sobre, ID o descripción...">
     <p class="help-text drag-hint">Arrastra una página en la lista para reordenarla (deshabilitado mientras buscas).</p>
 
     <div id="pagesList" class="pages-list"></div>
 
-    <button id="newPageBtn" class="secondary full" type="button">+ Nueva página</button>
-    <button id="clearAllBtn" class="danger full" type="button">🗑 Borrar todas las páginas</button>
+    <button id="newPageBtn" class="secondary full">+ Nueva página</button>
+    <button id="clearAllBtn" class="danger full">🗑 Borrar todas las páginas</button>
 
     <div class="download-box">
       <strong>¿Terminaste o quieres pausar?</strong>
       <p>Puedes descargar el Word completo o guardar un respaldo para continuar después.</p>
-      <button id="previewBtn" class="secondary full" type="button">👁 Vista previa de todas las páginas</button>
-      <button id="downloadBtn2" class="primary full" type="button">Descargar documento Word</button>
+      <button id="previewBtn" class="secondary full">👁 Vista previa de todas las páginas</button>
+      <button id="downloadBtn2" class="primary full">Descargar documento Word</button>
     </div>
   </aside>
 </main>
@@ -130,7 +129,7 @@
     <p id="confirmMessage"></p>
     <div class="modal-actions">
       <button type="button" id="confirmCancelBtn" class="secondary">Cancelar</button>
-      <button type="button" id="confirmOkBtn" class="danger">Continuar</button>
+      <button type="button" id="confirmOkBtn" class="danger">Eliminar</button>
     </div>
   </div>
 </div>
@@ -142,47 +141,6 @@
       <button type="button" id="previewCloseBtn" class="secondary">Cerrar</button>
     </div>
     <div id="previewTableWrap"></div>
-  </div>
-</div>
-
-<div id="excelModal" class="modal-overlay" hidden>
-  <div class="modal-box modal-box-xlarge">
-    <div class="modal-header">
-      <div>
-        <h3>📊 Importar datos desde Excel</h3>
-        <p class="modal-subtitle">El Excel se analiza primero. Nada de la página actual se modifica hasta que confirmes la importación.</p>
-      </div>
-      <button type="button" id="excelCancelBtn" class="secondary">Cerrar</button>
-    </div>
-
-    <div class="excel-controls">
-      <label class="file-picker">
-        Archivo Excel (.xlsx / .xlsm)
-        <input id="excelFileInput" type="file" accept=".xlsx,.xlsm">
-      </label>
-      <button id="excelAnalyzeBtn" type="button" class="primary">🔎 Analizar Excel</button>
-    </div>
-
-    <div id="excelStatus" class="excel-status"></div>
-    <div class="excel-selection">
-      <label>Importar caja
-        <select id="excelBoxSelect" disabled>
-          <option value="">Primero analiza el Excel</option>
-        </select>
-      </label>
-      <div id="excelSelectionCount" class="selection-count"></div>
-    </div>
-    <div id="excelSummary" class="excel-summary">Selecciona un Excel para analizarlo antes de importar.</div>
-    <div id="excelWarnings" class="excel-warnings"></div>
-    <div id="excelPreviewWrap" class="excel-preview-wrap"></div>
-
-    <div class="excel-footer">
-      <label class="check-row">
-        <input id="excelKeepExisting" type="checkbox">
-        Mantener las páginas actuales y agregar las importadas al final
-      </label>
-      <button id="excelApplyBtn" type="button" class="primary" disabled>✓ Confirmar importación</button>
-    </div>
   </div>
 </div>
 
