@@ -375,14 +375,14 @@ footer {
   gap: 6px;
   font-size: 13px;
   font-weight: 650;
-  color: #465166;
+  color: var(--text-muted);
 }
 #importModal select {
-  border: 1px solid #cfd6e1;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   padding: 10px 11px;
   font: inherit;
-  color: #172033;
-  background: #fff;
+  color: var(--text);
+  background: var(--card-bg);
   width: 100%;
 }
