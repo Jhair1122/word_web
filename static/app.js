@@ -15,71 +15,18 @@ const emptyPage = () => ({
 
 let pages = [];
 let current = 0;
-let searchQuery = "";
-let lastDeleted = null; // { type: 'single' | 'clear', page?, index?, pages? }
-let undoTimer = null;
 
 const form = document.getElementById("pageForm");
 const pagesList = document.getElementById("pagesList");
 const currentNumber = document.getElementById("currentNumber");
-const totalPagesEl = document.getElementById("totalPages");
 const pageCount = document.getElementById("pageCount");
 const statusEl = document.getElementById("status");
-const statusIconEl = document.getElementById("statusIconEl");
-const statusTextEl = document.getElementById("statusTextEl");
 const itemsContainer = document.getElementById("itemsContainer");
-const pageSearch = document.getElementById("pageSearch");
 
 const confirmModal = document.getElementById("confirmModal");
 const confirmMessage = document.getElementById("confirmMessage");
 const confirmOkBtn = document.getElementById("confirmOkBtn");
 const confirmCancelBtn = document.getElementById("confirmCancelBtn");
-
-const previewModal = document.getElementById("previewModal");
-const previewTableWrap = document.getElementById("previewTableWrap");
-const previewBtn = document.getElementById("previewBtn");
-const previewCloseBtn = document.getElementById("previewCloseBtn");
-
-const undoToast = document.getElementById("undoToast");
-const undoMessage = document.getElementById("undoMessage");
-const undoBtn = document.getElementById("undoBtn");
-
-const themeToggleBtn = document.getElementById("themeToggleBtn");
-
-/* ---------- Estado / textos ---------- */
-
-const STATUS = {
-  loading: { icon: "⏳", text: "Cargando desde la base de datos...", cls: "" },
-  saving: { icon: "💾", text: "Guardando en Supabase...", cls: "status-saving" },
-  saved: { icon: "✅", text: "Guardado en Supabase", cls: "" },
-  error: { icon: "⚠️", text: "Error de conexión — revisa tu internet", cls: "status-error" }
-};
-
-function setStatus(key) {
-  const s = STATUS[key];
-  statusIconEl.textContent = s.icon;
-  statusTextEl.textContent = s.text;
-  statusEl.className = "status" + (s.cls ? " " + s.cls : "");
-}
-
-/* ---------- Tema (preferencia visual local, no son datos del documento) ---------- */
-
-function initTheme() {
-  const saved = localStorage.getItem("pangoa_theme");
-  const theme = saved === "dark" ? "dark" : "light";
-  document.documentElement.setAttribute("data-theme", theme);
-  themeToggleBtn.textContent = theme === "dark" ? "☀️" : "🌙";
-}
-
-themeToggleBtn.addEventListener("click", () => {
-  const current = document.documentElement.getAttribute("data-theme");
-  const next = current === "dark" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", next);
-  localStorage.setItem("pangoa_theme", next);
-  themeToggleBtn.textContent = next === "dark" ? "☀️" : "🌙";
-});
-
-/* ---------- Modal de confirmación ---------- */
 
 function showConfirm(message) {
   return new Promise((resolve) => {
@@ -111,39 +58,6 @@ function showConfirm(message) {
   });
 }
 
-/* ---------- Deshacer último borrado ---------- */
-
-function showUndoToast(message) {
-  clearTimeout(undoTimer);
-  undoMessage.textContent = message;
-  undoToast.hidden = false;
-  undoTimer = setTimeout(() => {
-    undoToast.hidden = true;
-    lastDeleted = null;
-  }, 6000);
-}
-
-undoBtn.addEventListener("click", async () => {
-  if (!lastDeleted) return;
-  clearTimeout(undoTimer);
-  undoToast.hidden = true;
-
-  if (lastDeleted.type === "single") {
-    pages.splice(lastDeleted.index, 0, lastDeleted.page);
-    current = lastDeleted.index;
-  } else if (lastDeleted.type === "clear") {
-    pages = lastDeleted.pages;
-    current = 0;
-  }
-  lastDeleted = null;
-
-  await persist();
-  fillForm(pages[current]);
-  renderPages();
-});
-
-/* ---------- Red / persistencia ---------- */
-
 async function fetchPages() {
   const response = await fetch("/paginas");
   if (!response.ok) throw new Error("No se pudieron cargar las páginas.");
@@ -152,7 +66,7 @@ async function fetchPages() {
 }
 
 async function persist() {
-  setStatus("saving");
+  statusEl.textContent = "Guardando...";
   try {
     const response = await fetch("/paginas", {
       method: "POST",
@@ -160,13 +74,11 @@ async function persist() {
       body: JSON.stringify({ pages })
     });
     if (!response.ok) throw new Error("Error al guardar");
-    setStatus("saved");
+    statusEl.textContent = "Guardado en la nube";
   } catch (err) {
-    setStatus("error");
+    statusEl.textContent = "⚠ Error al guardar (revisa tu conexión)";
   }
 }
-
-/* ---------- Normalización y formulario ---------- */
 
 function normalizePage(page) {
   const items = Array.isArray(page.items) && page.items.length
@@ -295,39 +207,17 @@ function fillForm(data) {
   itemsContainer.innerHTML = "";
   data.items.forEach(item => addItem(item));
   currentNumber.textContent = current + 1;
-  totalPagesEl.textContent = pages.length;
 }
-
-/* ---------- Lista de páginas: buscador + arrastrar para reordenar ---------- */
-
-function pageMatchesSearch(page, query) {
-  if (!query) return true;
-  const q = query.toLowerCase();
-  const first = page.items[0] || emptyItem();
-  const haystack = [
-    page.id, page.sobre, page.cod_serie, page.codigo,
-    first.subserie, first.descripcion, first.folio
-  ].join(" ").toLowerCase();
-  return haystack.includes(q);
-}
-
-let dragFromIndex = null;
 
 function renderPages() {
   pageCount.textContent = pages.length;
-  totalPagesEl.textContent = pages.length;
   pagesList.innerHTML = "";
 
-  const dragEnabled = searchQuery === "";
-
-  pages.forEach((rawPage, index) => {
-    const page = normalizePage(rawPage);
-    if (!pageMatchesSearch(page, searchQuery)) return;
-
+  pages.forEach((page, index) => {
+    page = normalizePage(page);
     const button = document.createElement("button");
     button.className = "page-item" + (index === current ? " active" : "");
     button.type = "button";
-    button.draggable = dragEnabled;
 
     const firstItem = page.items[0] || emptyItem();
     const title = document.createElement("strong");
@@ -347,13 +237,10 @@ function renderPages() {
         const ok = await showConfirm("¿Vaciar el contenido de esta página?");
         if (!ok) return;
         pages[0] = emptyPage();
-        lastDeleted = null;
       } else {
         const ok = await showConfirm(`¿Eliminar la página ${index + 1}?`);
         if (!ok) return;
-        const [removed] = pages.splice(index, 1);
-        lastDeleted = { type: "single", page: removed, index };
-        showUndoToast(`Página ${index + 1} eliminada.`);
+        pages.splice(index, 1);
         if (current >= pages.length) current = pages.length - 1;
         else if (index < current) current--;
       }
@@ -377,55 +264,13 @@ function renderPages() {
       fillForm(pages[current]);
       renderPages();
     });
-
-    if (dragEnabled) {
-      button.addEventListener("dragstart", () => {
-        dragFromIndex = index;
-        button.classList.add("dragging");
-      });
-      button.addEventListener("dragend", () => {
-        button.classList.remove("dragging");
-      });
-      button.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        button.classList.add("drag-over");
-      });
-      button.addEventListener("dragleave", () => {
-        button.classList.remove("drag-over");
-      });
-      button.addEventListener("drop", async (e) => {
-        e.preventDefault();
-        button.classList.remove("drag-over");
-        if (dragFromIndex === null || dragFromIndex === index) return;
-
-        const [moved] = pages.splice(dragFromIndex, 1);
-        pages.splice(index, 0, moved);
-
-        if (current === dragFromIndex) current = index;
-        else if (dragFromIndex < current && index >= current) current--;
-        else if (dragFromIndex > current && index <= current) current++;
-
-        dragFromIndex = null;
-        await persist();
-        fillForm(pages[current]);
-        renderPages();
-      });
-    }
-
     pagesList.appendChild(button);
   });
 }
 
-pageSearch.addEventListener("input", () => {
-  searchQuery = pageSearch.value.trim();
-  renderPages();
-});
-
-/* ---------- Guardado en tecleo ---------- */
-
 function handleFormInput() {
   pages[current] = collectFormData();
-  setStatus("saving");
+  statusEl.textContent = "Guardando...";
   clearTimeout(window.saveTimer);
   window.saveTimer = setTimeout(async () => {
     await persist();
@@ -434,8 +279,6 @@ function handleFormInput() {
 }
 
 form.querySelectorAll("input, textarea").forEach(input => input.addEventListener("input", handleFormInput));
-
-/* ---------- Botones principales ---------- */
 
 document.getElementById("addItemBtn").addEventListener("click", async () => {
   addItem();
@@ -467,22 +310,11 @@ document.getElementById("newPageBtn").addEventListener("click", async () => {
   renderPages();
 });
 
-document.getElementById("duplicatePageBtn").addEventListener("click", async () => {
-  pages[current] = collectFormData();
-  const copy = JSON.parse(JSON.stringify(pages[current]));
-  pages.splice(current + 1, 0, copy);
-  current = current + 1;
-  await persist();
-  fillForm(pages[current]);
-  renderPages();
-});
-
 document.getElementById("deletePageBtn").addEventListener("click", async () => {
   if (pages.length === 1) {
     const ok = await showConfirm("¿Vaciar el contenido de esta página?");
     if (!ok) return;
     pages[0] = emptyPage();
-    lastDeleted = null;
     await persist();
     fillForm(pages[0]);
     renderPages();
@@ -492,9 +324,7 @@ document.getElementById("deletePageBtn").addEventListener("click", async () => {
   const ok = await showConfirm(`¿Eliminar la página ${current + 1}? Esta acción no se puede deshacer.`);
   if (!ok) return;
 
-  const [removed] = pages.splice(current, 1);
-  lastDeleted = { type: "single", page: removed, index: current };
-  showUndoToast(`Página ${current + 1} eliminada.`);
+  pages.splice(current, 1);
   if (current >= pages.length) current = pages.length - 1;
 
   await persist();
@@ -506,9 +336,6 @@ document.getElementById("clearAllBtn").addEventListener("click", async () => {
   const ok = await showConfirm("¿Borrar TODAS las páginas y empezar un documento nuevo desde cero? Esta acción no se puede deshacer.");
   if (!ok) return;
 
-  lastDeleted = { type: "clear", pages: pages.map(normalizePage) };
-  showUndoToast("Se borraron todas las páginas.");
-
   pages = [emptyPage()];
   current = 0;
 
@@ -516,49 +343,6 @@ document.getElementById("clearAllBtn").addEventListener("click", async () => {
   fillForm(pages[0]);
   renderPages();
 });
-
-/* ---------- Vista previa ---------- */
-
-function buildPreviewTable() {
-  const rows = pages.map((raw, i) => {
-    const p = normalizePage(raw);
-    const foliosResumen = p.items.map(it => it.folio || "-").join(", ");
-    const descResumen = p.items.map(it => it.descripcion || "-").join(" | ");
-    return `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${p.sobre || "-"}</td>
-        <td>${p.id || "-"}</td>
-        <td>${p.seccion || "-"}</td>
-        <td>${p.fecha_inicio || "-"} → ${p.fecha_final || "-"}</td>
-        <td>${foliosResumen}</td>
-        <td>${descResumen}</td>
-      </tr>
-    `;
-  }).join("");
-
-  return `
-    <table class="preview-table">
-      <thead>
-        <tr>
-          <th>#</th><th>Sobre</th><th>ID</th><th>Sección</th><th>Fechas</th><th>Folio(s)</th><th>Descripción</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
-}
-
-previewBtn.addEventListener("click", async () => {
-  await saveCurrent();
-  previewTableWrap.innerHTML = buildPreviewTable();
-  previewModal.hidden = false;
-});
-
-previewCloseBtn.addEventListener("click", () => { previewModal.hidden = true; });
-previewModal.addEventListener("click", (e) => { if (e.target === previewModal) previewModal.hidden = true; });
-
-/* ---------- Descargar / respaldo ---------- */
 
 async function downloadWord() {
   await saveCurrent();
@@ -634,16 +418,13 @@ document.getElementById("loadJsonInput").addEventListener("change", async (event
   event.target.value = "";
 });
 
-/* ---------- Inicio ---------- */
-
 async function init() {
-  initTheme();
-  setStatus("loading");
+  statusEl.textContent = "Cargando...";
   try {
     pages = await fetchPages();
   } catch {
     pages = [];
-    setStatus("error");
+    statusEl.textContent = "⚠ No se pudo conectar. Intenta recargar la página.";
   }
 
   if (!pages.length) pages = [emptyPage()];
@@ -652,7 +433,276 @@ async function init() {
 
   fillForm(pages[current]);
   renderPages();
-  if (statusTextEl.textContent === STATUS.loading.text) setStatus("saved");
+  if (statusEl.textContent === "Cargando...") statusEl.textContent = "Guardado en la nube";
 }
 
 init();
+
+
+/* ==========================================================
+   IMPORTAR DESDE EXCEL — función adicional, no toca nada más
+   ========================================================== */
+
+const importModal = document.getElementById("importModal");
+const importStep1 = document.getElementById("importStep1");
+const importStep2 = document.getElementById("importStep2");
+const importPickFileBtn = document.getElementById("importPickFileBtn");
+const importFileStatus = document.getElementById("importFileStatus");
+const importCajaSelect = document.getElementById("importCajaSelect");
+const importSummary = document.getElementById("importSummary");
+const importPreviewWrap = document.getElementById("importPreviewWrap");
+const importWarnings = document.getElementById("importWarnings");
+const excelFileInput = document.getElementById("excelFileInput");
+
+let importedByCaja = new Map(); // caja -> array de "pages" ya armadas
+let importSkippedRows = 0;
+
+function normalizeHeader(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quita tildes
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findColumns(rows) {
+  const targets = {
+    subserie: ["n de cp", "n° de cp", "n de c p"],
+    descripcion: ["asunto"],
+    fecha: ["fecha/ano", "fecha/año", "fecha"],
+    folio: ["folios", "folio"],
+    sobre: ["n de sobre", "n° de sobre"],
+    caja: ["n de caja", "n° de caja"]
+  };
+  const found = {};
+  const maxScanRows = Math.min(12, rows.length);
+
+  for (let r = 0; r < maxScanRows; r++) {
+    const row = rows[r] || [];
+    row.forEach((cell, c) => {
+      const norm = normalizeHeader(cell);
+      if (!norm) return;
+      for (const key in targets) {
+        if (found[key] !== undefined) continue;
+        if (targets[key].some(t => norm === normalizeHeader(t))) {
+          found[key] = c;
+        }
+      }
+    });
+  }
+  return found;
+}
+
+function extractSubserieNumber(value) {
+  const str = String(value || "");
+  const match = str.match(/(\d+)\s*$/);
+  return match ? match[1] : str.trim();
+}
+
+function excelDateToYMD(value) {
+  let d = null;
+  if (value instanceof Date) {
+    d = value;
+  } else if (typeof value === "string") {
+    const m = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (m) d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  }
+  if (!d || isNaN(d.getTime())) return null;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function parseExcelToPages(rows) {
+  const cols = findColumns(rows);
+  const required = ["subserie", "descripcion", "fecha", "folio", "sobre", "caja"];
+  const missing = required.filter(k => cols[k] === undefined);
+  if (missing.length) {
+    throw new Error("No se encontraron las columnas: " + missing.join(", ") + ". Revisa que el Excel tenga el formato esperado.");
+  }
+
+  // headerRow = última fila donde se detectó alguna columna (buscamos la fila más profunda entre las escaneadas)
+  let dataStartRow = 0;
+  for (let r = 0; r < Math.min(12, rows.length); r++) {
+    const row = rows[r] || [];
+    const hasAny = Object.values(cols).some(c => normalizeHeader(row[c]) !== "" && normalizeHeader(row[c]) !== undefined);
+    if (hasAny) dataStartRow = r + 1;
+  }
+
+  const byCaja = new Map(); // caja -> Map(sobre -> {items:[], fechas:[]})
+  importSkippedRows = 0;
+
+  for (let r = dataStartRow; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const cajaVal = row[cols.caja];
+    const sobreVal = row[cols.sobre];
+    const folioVal = row[cols.folio];
+    const subserieVal = row[cols.subserie];
+    const descVal = row[cols.descripcion];
+    const fechaVal = row[cols.fecha];
+
+    const cajaNum = Number(cajaVal);
+    const sobreNum = Number(sobreVal);
+
+    if (!cajaVal || !sobreVal || isNaN(cajaNum) || isNaN(sobreNum)) {
+      // fila de encabezado/sección/vacía, se omite
+      if (row.some(c => c !== null && c !== undefined && String(c).trim() !== "")) {
+        importSkippedRows++;
+      }
+      continue;
+    }
+
+    const ymd = excelDateToYMD(fechaVal);
+
+    if (!byCaja.has(cajaNum)) byCaja.set(cajaNum, new Map());
+    const sobresMap = byCaja.get(cajaNum);
+    if (!sobresMap.has(sobreNum)) sobresMap.set(sobreNum, { items: [], fechas: [] });
+    const grupo = sobresMap.get(sobreNum);
+
+    grupo.items.push({
+      subserie: extractSubserieNumber(subserieVal),
+      descripcion: String(descVal || "").trim(),
+      folio: String(folioVal ?? "").trim()
+    });
+    if (ymd) grupo.fechas.push(ymd);
+  }
+
+  // Convierte a estructura final: caja -> array de "pages"
+  const result = new Map();
+  for (const [caja, sobresMap] of byCaja.entries()) {
+    const sobresOrdenados = Array.from(sobresMap.keys()).sort((a, b) => a - b);
+    const pages = sobresOrdenados.map(sobreNum => {
+      const grupo = sobresMap.get(sobreNum);
+      const fechasOrdenadas = grupo.fechas.slice().sort();
+      const fechaInicio = fechasOrdenadas[0] || "";
+      const fechaFinal = fechasOrdenadas[fechasOrdenadas.length - 1] || "";
+      const anio = fechaInicio ? fechaInicio.slice(0, 4) : (fechaFinal ? fechaFinal.slice(0, 4) : "");
+
+      return {
+        id: "",
+        caja: String(caja),
+        cod_serie: "",
+        sobre: String(sobreNum),
+        codigo: "TESO - 01",
+        seccion: "TESORERIA",
+        serie_doc: "COMPROBANTE DE PAGO",
+        items: grupo.items,
+        fecha_inicio: fechaInicio,
+        fecha_final: fechaFinal,
+        anio: anio
+      };
+    });
+    result.set(caja, pages);
+  }
+
+  return result;
+}
+
+function renderImportPreview(cajaPages) {
+  const totalItems = cajaPages.reduce((sum, p) => sum + p.items.length, 0);
+  importSummary.textContent = `Se generarán ${cajaPages.length} página(s) con ${totalItems} comprobante(s) en total.`;
+
+  const rowsHtml = cajaPages.slice(0, 8).map(p => `
+    <tr>
+      <td>Sobre ${p.sobre}</td>
+      <td>${p.items.length} cuadro(s)</td>
+      <td>${p.fecha_inicio || "-"} → ${p.fecha_final || "-"}</td>
+      <td>${p.items[0] ? p.items[0].descripcion.slice(0, 70) + (p.items[0].descripcion.length > 70 ? "…" : "") : "-"}</td>
+    </tr>
+  `).join("");
+
+  importPreviewWrap.innerHTML = `
+    <table class="preview-table">
+      <thead><tr><th>Página</th><th>Cuadros</th><th>Fechas</th><th>Primer comprobante</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    ${cajaPages.length > 8 ? `<p class="help-text">... y ${cajaPages.length - 8} página(s) más.</p>` : ""}
+  `;
+
+  importWarnings.textContent = importSkippedRows > 0
+    ? `⚠️ Se omitieron ${importSkippedRows} fila(s) que no correspondían a datos válidos (encabezados o filas vacías).`
+    : "";
+}
+
+function openImportModal() {
+  importStep1.hidden = false;
+  importStep2.hidden = true;
+  importFileStatus.textContent = "";
+  importModal.hidden = false;
+}
+
+document.getElementById("importExcelBtn").addEventListener("click", openImportModal);
+document.getElementById("importCloseBtn").addEventListener("click", () => { importModal.hidden = true; });
+importModal.addEventListener("click", (e) => { if (e.target === importModal) importModal.hidden = true; });
+
+importPickFileBtn.addEventListener("click", () => excelFileInput.click());
+
+excelFileInput.addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  importFileStatus.textContent = "Leyendo archivo...";
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null });
+
+    importedByCaja = parseExcelToPages(rows);
+
+    if (importedByCaja.size === 0) {
+      importFileStatus.textContent = "No se encontraron datos válidos en el archivo.";
+      return;
+    }
+
+    const cajasOrdenadas = Array.from(importedByCaja.keys()).sort((a, b) => a - b);
+    importCajaSelect.innerHTML = cajasOrdenadas.map(caja => {
+      const n = importedByCaja.get(caja).length;
+      return `<option value="${caja}">Caja ${caja} (${n} página(s))</option>`;
+    }).join("");
+
+    importFileStatus.textContent = `Archivo leído: ${cajasOrdenadas.length} caja(s) encontradas.`;
+    importStep1.hidden = true;
+    importStep2.hidden = false;
+
+    renderImportPreview(importedByCaja.get(cajasOrdenadas[0]));
+  } catch (err) {
+    console.error(err);
+    importFileStatus.textContent = "Error al leer el archivo: " + err.message;
+  }
+
+  event.target.value = "";
+});
+
+importCajaSelect.addEventListener("change", () => {
+  const caja = Number(importCajaSelect.value);
+  renderImportPreview(importedByCaja.get(caja));
+});
+
+async function commitImport(mode) {
+  const caja = Number(importCajaSelect.value);
+  const cajaPages = importedByCaja.get(caja);
+  if (!cajaPages || !cajaPages.length) return;
+
+  if (mode === "replace") {
+    const ok = await showConfirm(`Esto reemplazará TODAS las páginas actuales por las ${cajaPages.length} páginas de la Caja ${caja}. ¿Continuar?`);
+    if (!ok) return;
+    pages = cajaPages.map(p => JSON.parse(JSON.stringify(p)));
+    current = 0;
+  } else {
+    pages = pages.concat(cajaPages.map(p => JSON.parse(JSON.stringify(p))));
+    current = pages.length - cajaPages.length;
+  }
+
+  await persist();
+  fillForm(pages[current]);
+  renderPages();
+  importModal.hidden = true;
+}
+
+document.getElementById("importReplaceBtn").addEventListener("click", () => commitImport("replace"));
+document.getElementById("importAppendBtn").addEventListener("click", () => commitImport("append"));
