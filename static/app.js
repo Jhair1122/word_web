@@ -706,3 +706,105 @@ async function commitImport(mode) {
 
 document.getElementById("importReplaceBtn").addEventListener("click", () => commitImport("replace"));
 document.getElementById("importAppendBtn").addEventListener("click", () => commitImport("append"));
+
+/* ---------- Verificar diferencias contra lo ya guardado ---------- */
+
+function buildCurrentIndexForCaja(caja) {
+  const map = new Map();
+  pages.forEach(rawP => {
+    const p = normalizePage(rawP);
+    if (String(p.caja).trim() !== String(caja).trim()) return;
+    const key = String(p.sobre).trim();
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(p);
+  });
+  return map;
+}
+
+function diffCajaPages(caja, excelPages) {
+  const currentMap = buildCurrentIndexForCaja(caja);
+  const excelMap = new Map(excelPages.map(p => [String(p.sobre), p]));
+  const allSobres = new Set([...currentMap.keys(), ...excelMap.keys()]);
+  const sobresSorted = Array.from(allSobres).sort((a, b) => Number(a) - Number(b));
+
+  const issues = [];
+
+  sobresSorted.forEach(sobre => {
+    const excelPage = excelMap.get(sobre);
+    const currentPagesForSobre = currentMap.get(sobre) || [];
+
+    if (!excelPage && currentPagesForSobre.length) {
+      issues.push({ sobre, detail: `Existe en la página web pero no aparece en el Excel para esta caja.` });
+      return;
+    }
+    if (excelPage && !currentPagesForSobre.length) {
+      issues.push({ sobre, detail: `Está en el Excel (${excelPage.items.length} comprobante(s)) pero no existe en la página web.` });
+      return;
+    }
+    if (currentPagesForSobre.length > 1) {
+      issues.push({ sobre, detail: `Aparece ${currentPagesForSobre.length} veces en la página web (debería ser una sola página).` });
+    }
+
+    const currentPage = currentPagesForSobre[0];
+    if (!currentPage) return;
+
+    if ((currentPage.fecha_inicio || "") !== (excelPage.fecha_inicio || "")) {
+      issues.push({ sobre, detail: `Fecha inicio: web="${currentPage.fecha_inicio || "-"}" vs excel="${excelPage.fecha_inicio || "-"}"` });
+    }
+    if ((currentPage.fecha_final || "") !== (excelPage.fecha_final || "")) {
+      issues.push({ sobre, detail: `Fecha final: web="${currentPage.fecha_final || "-"}" vs excel="${excelPage.fecha_final || "-"}"` });
+    }
+    if ((currentPage.anio || "") !== (excelPage.anio || "")) {
+      issues.push({ sobre, detail: `Año: web="${currentPage.anio || "-"}" vs excel="${excelPage.anio || "-"}"` });
+    }
+
+    if (currentPage.items.length !== excelPage.items.length) {
+      issues.push({ sobre, detail: `Cantidad de cuadros distinta: web=${currentPage.items.length}, excel=${excelPage.items.length}.` });
+    }
+
+    const maxLen = Math.max(currentPage.items.length, excelPage.items.length);
+    for (let i = 0; i < maxLen; i++) {
+      const wi = currentPage.items[i];
+      const ei = excelPage.items[i];
+      if (!wi || !ei) continue; // ya se reportó como cantidad distinta
+
+      if ((wi.subserie || "") !== (ei.subserie || "")) {
+        issues.push({ sobre, detail: `Cuadro ${i + 1}: sub serie web="${wi.subserie || "-"}" vs excel="${ei.subserie || "-"}"` });
+      }
+      if ((wi.folio || "") !== (ei.folio || "")) {
+        issues.push({ sobre, detail: `Cuadro ${i + 1}: folio web="${wi.folio || "-"}" vs excel="${ei.folio || "-"}"` });
+      }
+      if ((wi.descripcion || "").trim() !== (ei.descripcion || "").trim()) {
+        issues.push({ sobre, detail: `Cuadro ${i + 1}: la descripción no coincide exactamente con el Excel.` });
+      }
+    }
+  });
+
+  return issues;
+}
+
+function renderDiffReport(caja, excelPages) {
+  const wrap = document.getElementById("importDiffWrap");
+  const issues = diffCajaPages(caja, excelPages);
+
+  if (!issues.length) {
+    wrap.innerHTML = `<p style="color:#1d7b45; font-weight:650; margin-top:10px;">✅ Todo coincide exactamente entre el Excel y lo que ya está guardado para la Caja ${caja}.</p>`;
+    return;
+  }
+
+  const rows = issues.map(i => `<tr><td>Sobre ${i.sobre}</td><td>${i.detail}</td></tr>`).join("");
+  wrap.innerHTML = `
+    <p style="color:#c0392b; font-weight:650; margin-top:10px;">⚠️ Se encontraron ${issues.length} diferencia(s) en la Caja ${caja}:</p>
+    <table class="preview-table">
+      <thead><tr><th>Página</th><th>Detalle</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+document.getElementById("importVerifyBtn").addEventListener("click", () => {
+  const caja = Number(importCajaSelect.value);
+  const cajaPages = importedByCaja.get(caja);
+  if (!cajaPages) return;
+  renderDiffReport(caja, cajaPages);
+});
