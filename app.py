@@ -80,6 +80,10 @@ def set_date_paragraph(paragraph_element, start_date, final_date):
     The original Word uses positioned text boxes for the dates.
     The first page contains four duplicated text-box representations:
     two for the start date and two for the final date.
+
+    Nota: los índices 1,2,4,5 corresponden físicamente al recuadro
+    "FECHA FINAL" de la plantilla, y los índices 7,8,10,11 al recuadro
+    "FECHA INICIO", aunque el nombre de las variables sugiera lo contrario.
     """
     text_nodes = paragraph_element.xpath(".//w:t")
     if len(text_nodes) < 12:
@@ -88,12 +92,11 @@ def set_date_paragraph(paragraph_element, start_date, final_date):
     start_day, start_rest = format_date(start_date)
     final_day, final_rest = format_date(final_date)
 
-    # Keep the original spacing nodes; change only the date text.
     replacements = {
-        1: start_day, 2: start_rest,
-        4: start_day, 5: start_rest,
-        7: final_day, 8: final_rest,
-        10: final_day, 11: final_rest,
+        1: final_day, 2: final_rest,
+        4: final_day, 5: final_rest,
+        7: start_day, 8: start_rest,
+        10: start_day, 11: start_rest,
     }
     for index, value in replacements.items():
         text_nodes[index].text = value
