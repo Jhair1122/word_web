@@ -15,18 +15,33 @@ const emptyPage = () => ({
 
 let pages = [];
 let current = 0;
+let searchQuery = "";
+let lastDeleted = null;
+let undoTimer = null;
+let dragFromIndex = null;
 
 const form = document.getElementById("pageForm");
 const pagesList = document.getElementById("pagesList");
 const currentNumber = document.getElementById("currentNumber");
+const totalPagesEl = document.getElementById("totalPages");
 const pageCount = document.getElementById("pageCount");
 const statusEl = document.getElementById("status");
 const itemsContainer = document.getElementById("itemsContainer");
+const pageSearch = document.getElementById("pageSearch");
 
 const confirmModal = document.getElementById("confirmModal");
 const confirmMessage = document.getElementById("confirmMessage");
 const confirmOkBtn = document.getElementById("confirmOkBtn");
 const confirmCancelBtn = document.getElementById("confirmCancelBtn");
+
+const previewModal = document.getElementById("previewModal");
+const previewTableWrap = document.getElementById("previewTableWrap");
+const previewBtn = document.getElementById("previewBtn");
+const previewCloseBtn = document.getElementById("previewCloseBtn");
+
+const undoToast = document.getElementById("undoToast");
+const undoMessage = document.getElementById("undoMessage");
+const undoBtn = document.getElementById("undoBtn");
 
 function showConfirm(message) {
   return new Promise((resolve) => {
@@ -57,6 +72,39 @@ function showConfirm(message) {
     document.addEventListener("keydown", onKeydown);
   });
 }
+
+/* ---------- Deshacer último borrado ---------- */
+
+function showUndoToast(message) {
+  clearTimeout(undoTimer);
+  undoMessage.textContent = message;
+  undoToast.hidden = false;
+  undoTimer = setTimeout(() => {
+    undoToast.hidden = true;
+    lastDeleted = null;
+  }, 6000);
+}
+
+undoBtn.addEventListener("click", async () => {
+  if (!lastDeleted) return;
+  clearTimeout(undoTimer);
+  undoToast.hidden = true;
+
+  if (lastDeleted.type === "single") {
+    pages.splice(lastDeleted.index, 0, lastDeleted.page);
+    current = lastDeleted.index;
+  } else if (lastDeleted.type === "clear") {
+    pages = lastDeleted.pages;
+    current = 0;
+  }
+  lastDeleted = null;
+
+  await persist();
+  fillForm(pages[current]);
+  renderPages();
+});
+
+/* ---------- Red / persistencia (sin cambios) ---------- */
 
 async function fetchPages() {
   const response = await fetch("/paginas");
@@ -207,17 +255,37 @@ function fillForm(data) {
   itemsContainer.innerHTML = "";
   data.items.forEach(item => addItem(item));
   currentNumber.textContent = current + 1;
+  totalPagesEl.textContent = pages.length;
+}
+
+/* ---------- Lista de páginas: buscador + arrastrar para reordenar (RESTAURADO) ---------- */
+
+function pageMatchesSearch(page, query) {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  const first = page.items[0] || emptyItem();
+  const haystack = [
+    page.id, page.sobre, page.cod_serie, page.codigo,
+    first.subserie, first.descripcion, first.folio
+  ].join(" ").toLowerCase();
+  return haystack.includes(q);
 }
 
 function renderPages() {
   pageCount.textContent = pages.length;
+  totalPagesEl.textContent = pages.length;
   pagesList.innerHTML = "";
 
-  pages.forEach((page, index) => {
-    page = normalizePage(page);
+  const dragEnabled = searchQuery === "";
+
+  pages.forEach((rawPage, index) => {
+    const page = normalizePage(rawPage);
+    if (!pageMatchesSearch(page, searchQuery)) return;
+
     const button = document.createElement("button");
     button.className = "page-item" + (index === current ? " active" : "");
     button.type = "button";
+    button.draggable = dragEnabled;
 
     const firstItem = page.items[0] || emptyItem();
     const title = document.createElement("strong");
@@ -237,10 +305,13 @@ function renderPages() {
         const ok = await showConfirm("¿Vaciar el contenido de esta página?");
         if (!ok) return;
         pages[0] = emptyPage();
+        lastDeleted = null;
       } else {
         const ok = await showConfirm(`¿Eliminar la página ${index + 1}?`);
         if (!ok) return;
-        pages.splice(index, 1);
+        const [removed] = pages.splice(index, 1);
+        lastDeleted = { type: "single", page: removed, index };
+        showUndoToast(`Página ${index + 1} eliminada.`);
         if (current >= pages.length) current = pages.length - 1;
         else if (index < current) current--;
       }
@@ -264,9 +335,51 @@ function renderPages() {
       fillForm(pages[current]);
       renderPages();
     });
+
+    if (dragEnabled) {
+      button.addEventListener("dragstart", () => {
+        dragFromIndex = index;
+        button.classList.add("dragging");
+      });
+      button.addEventListener("dragend", () => {
+        button.classList.remove("dragging");
+      });
+      button.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        button.classList.add("drag-over");
+      });
+      button.addEventListener("dragleave", () => {
+        button.classList.remove("drag-over");
+      });
+      button.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        button.classList.remove("drag-over");
+        if (dragFromIndex === null || dragFromIndex === index) return;
+
+        const [moved] = pages.splice(dragFromIndex, 1);
+        pages.splice(index, 0, moved);
+
+        if (current === dragFromIndex) current = index;
+        else if (dragFromIndex < current && index >= current) current--;
+        else if (dragFromIndex > current && index <= current) current++;
+
+        dragFromIndex = null;
+        await persist();
+        fillForm(pages[current]);
+        renderPages();
+      });
+    }
+
     pagesList.appendChild(button);
   });
 }
+
+pageSearch.addEventListener("input", () => {
+  searchQuery = pageSearch.value.trim();
+  renderPages();
+});
+
+/* ---------- Guardado en tecleo ---------- */
 
 function handleFormInput() {
   pages[current] = collectFormData();
@@ -279,6 +392,8 @@ function handleFormInput() {
 }
 
 form.querySelectorAll("input, textarea").forEach(input => input.addEventListener("input", handleFormInput));
+
+/* ---------- Botones principales ---------- */
 
 document.getElementById("addItemBtn").addEventListener("click", async () => {
   addItem();
@@ -310,11 +425,22 @@ document.getElementById("newPageBtn").addEventListener("click", async () => {
   renderPages();
 });
 
+document.getElementById("duplicatePageBtn").addEventListener("click", async () => {
+  pages[current] = collectFormData();
+  const copy = JSON.parse(JSON.stringify(pages[current]));
+  pages.splice(current + 1, 0, copy);
+  current = current + 1;
+  await persist();
+  fillForm(pages[current]);
+  renderPages();
+});
+
 document.getElementById("deletePageBtn").addEventListener("click", async () => {
   if (pages.length === 1) {
     const ok = await showConfirm("¿Vaciar el contenido de esta página?");
     if (!ok) return;
     pages[0] = emptyPage();
+    lastDeleted = null;
     await persist();
     fillForm(pages[0]);
     renderPages();
@@ -324,7 +450,9 @@ document.getElementById("deletePageBtn").addEventListener("click", async () => {
   const ok = await showConfirm(`¿Eliminar la página ${current + 1}? Esta acción no se puede deshacer.`);
   if (!ok) return;
 
-  pages.splice(current, 1);
+  const [removed] = pages.splice(current, 1);
+  lastDeleted = { type: "single", page: removed, index: current };
+  showUndoToast(`Página ${current + 1} eliminada.`);
   if (current >= pages.length) current = pages.length - 1;
 
   await persist();
@@ -336,6 +464,9 @@ document.getElementById("clearAllBtn").addEventListener("click", async () => {
   const ok = await showConfirm("¿Borrar TODAS las páginas y empezar un documento nuevo desde cero? Esta acción no se puede deshacer.");
   if (!ok) return;
 
+  lastDeleted = { type: "clear", pages: pages.map(normalizePage) };
+  showUndoToast("Se borraron todas las páginas.");
+
   pages = [emptyPage()];
   current = 0;
 
@@ -343,6 +474,49 @@ document.getElementById("clearAllBtn").addEventListener("click", async () => {
   fillForm(pages[0]);
   renderPages();
 });
+
+/* ---------- Vista previa (RESTAURADO) ---------- */
+
+function buildPreviewTable() {
+  const rows = pages.map((raw, i) => {
+    const p = normalizePage(raw);
+    const foliosResumen = p.items.map(it => it.folio || "-").join(", ");
+    const descResumen = p.items.map(it => it.descripcion || "-").join(" | ");
+    return `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${p.sobre || "-"}</td>
+        <td>${p.id || "-"}</td>
+        <td>${p.seccion || "-"}</td>
+        <td>${p.fecha_inicio || "-"} → ${p.fecha_final || "-"}</td>
+        <td>${foliosResumen}</td>
+        <td>${descResumen}</td>
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <table class="preview-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Sobre</th><th>ID</th><th>Sección</th><th>Fechas</th><th>Folio(s)</th><th>Descripción</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+previewBtn.addEventListener("click", async () => {
+  await saveCurrent();
+  previewTableWrap.innerHTML = buildPreviewTable();
+  previewModal.hidden = false;
+});
+
+previewCloseBtn.addEventListener("click", () => { previewModal.hidden = true; });
+previewModal.addEventListener("click", (e) => { if (e.target === previewModal) previewModal.hidden = true; });
+
+/* ---------- Descargar Word / respaldo — SIN CAMBIOS ---------- */
 
 async function downloadWord() {
   await saveCurrent();
@@ -440,7 +614,7 @@ init();
 
 
 /* ==========================================================
-   IMPORTAR DESDE EXCEL — función adicional, no toca nada más
+   IMPORTAR DESDE EXCEL — sin cambios excepto el bug de subserie
    ========================================================== */
 
 const importModal = document.getElementById("importModal");
@@ -454,13 +628,13 @@ const importPreviewWrap = document.getElementById("importPreviewWrap");
 const importWarnings = document.getElementById("importWarnings");
 const excelFileInput = document.getElementById("excelFileInput");
 
-let importedByCaja = new Map(); // caja -> array de "pages" ya armadas
+let importedByCaja = new Map();
 let importSkippedRows = 0;
 
 function normalizeHeader(s) {
   return String(s || "")
     .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quita tildes
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/\./g, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -494,10 +668,16 @@ function findColumns(rows) {
   return found;
 }
 
+/* FIX: antes solo capturaba dígitos finales, así que "C.P N° 901-A"
+   devolvía el texto completo sin recortar. Ahora quita el prefijo
+   "C.P N°" (con sus variantes) y conserva sufijos como "-A". */
 function extractSubserieNumber(value) {
-  const str = String(value || "");
-  const match = str.match(/(\d+)\s*$/);
-  return match ? match[1] : str.trim();
+  const str = String(value ?? "").trim();
+  const match = str.match(/^C\.?\s*P\.?\s*N[°º]?\.?\s*(.+)$/i);
+  if (match) return match[1].trim();
+
+  const fallback = str.match(/([\w-]+)\s*$/);
+  return fallback ? fallback[1].trim() : str;
 }
 
 function excelDateToYMD(value) {
@@ -523,7 +703,6 @@ function parseExcelToPages(rows) {
     throw new Error("No se encontraron las columnas: " + missing.join(", ") + ". Revisa que el Excel tenga el formato esperado.");
   }
 
-  // headerRow = última fila donde se detectó alguna columna (buscamos la fila más profunda entre las escaneadas)
   let dataStartRow = 0;
   for (let r = 0; r < Math.min(12, rows.length); r++) {
     const row = rows[r] || [];
@@ -531,7 +710,7 @@ function parseExcelToPages(rows) {
     if (hasAny) dataStartRow = r + 1;
   }
 
-  const byCaja = new Map(); // caja -> Map(sobre -> {items:[], fechas:[]})
+  const byCaja = new Map();
   importSkippedRows = 0;
 
   for (let r = dataStartRow; r < rows.length; r++) {
@@ -547,7 +726,6 @@ function parseExcelToPages(rows) {
     const sobreNum = Number(sobreVal);
 
     if (!cajaVal || !sobreVal || isNaN(cajaNum) || isNaN(sobreNum)) {
-      // fila de encabezado/sección/vacía, se omite
       if (row.some(c => c !== null && c !== undefined && String(c).trim() !== "")) {
         importSkippedRows++;
       }
@@ -569,7 +747,6 @@ function parseExcelToPages(rows) {
     if (ymd) grupo.fechas.push(ymd);
   }
 
-  // Convierte a estructura final: caja -> array de "pages"
   const result = new Map();
   for (const [caja, sobresMap] of byCaja.entries()) {
     const sobresOrdenados = Array.from(sobresMap.keys()).sort((a, b) => a - b);
@@ -707,7 +884,7 @@ async function commitImport(mode) {
 document.getElementById("importReplaceBtn").addEventListener("click", () => commitImport("replace"));
 document.getElementById("importAppendBtn").addEventListener("click", () => commitImport("append"));
 
-/* ---------- Verificar diferencias contra lo ya guardado ---------- */
+/* ---------- Verificar diferencias — SIN CAMBIOS ---------- */
 
 function buildCurrentIndexForCaja(caja) {
   const map = new Map();
@@ -766,7 +943,7 @@ function diffCajaPages(caja, excelPages) {
     for (let i = 0; i < maxLen; i++) {
       const wi = currentPage.items[i];
       const ei = excelPage.items[i];
-      if (!wi || !ei) continue; // ya se reportó como cantidad distinta
+      if (!wi || !ei) continue;
 
       if ((wi.subserie || "") !== (ei.subserie || "")) {
         issues.push({ sobre, detail: `Cuadro ${i + 1}: sub serie web="${wi.subserie || "-"}" vs excel="${ei.subserie || "-"}"` });
@@ -809,7 +986,7 @@ document.getElementById("importVerifyBtn").addEventListener("click", () => {
   renderDiffReport(caja, cajaPages);
 });
 
-/* ---------- Tema claro/oscuro ---------- */
+/* ---------- Tema claro/oscuro — SIN CAMBIOS ---------- */
 
 const themeToggleBtn = document.getElementById("themeToggleBtn");
 
