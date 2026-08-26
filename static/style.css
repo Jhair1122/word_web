@@ -643,3 +643,6 @@ footer {
 #confirmModal {
   z-index: 300;
 }
+
+.page-item.dragging { opacity: .4; }
+.page-item.drag-over { border-top: 3px solid var(--accent-a); }
