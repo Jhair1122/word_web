@@ -808,3 +808,24 @@ document.getElementById("importVerifyBtn").addEventListener("click", () => {
   if (!cajaPages) return;
   renderDiffReport(caja, cajaPages);
 });
+
+/* ---------- Tema claro/oscuro ---------- */
+
+const themeToggleBtn = document.getElementById("themeToggleBtn");
+
+function initTheme() {
+  const saved = localStorage.getItem("pangoa_theme");
+  const theme = saved === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", theme);
+  themeToggleBtn.textContent = theme === "dark" ? "☀️" : "🌙";
+}
+
+themeToggleBtn.addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("pangoa_theme", next);
+  themeToggleBtn.textContent = next === "dark" ? "☀️" : "🌙";
+});
+
+initTheme();
