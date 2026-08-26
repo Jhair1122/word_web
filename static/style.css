@@ -495,8 +495,18 @@ footer {
   padding: 10px 11px;
   font: inherit;
   color: var(--text);
-  background: var(--input-bg);
+  background: var(--glass-bg-strong);
   width: 100%;
+}
+
+#importModal select option {
+  color: #172033;
+  background: #ffffff;
+}
+
+[data-theme="dark"] #importModal select option {
+  color: #eef1fb;
+  background: #1b2038;
 }
 
 .search-input {
@@ -551,4 +561,9 @@ footer {
 @keyframes toastIn {
   from { opacity: 0; transform: translate(-50%, 10px); }
   to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* El modal de confirmación debe verse siempre por encima de cualquier otro modal abierto */
+#confirmModal {
+  z-index: 300;
 }
