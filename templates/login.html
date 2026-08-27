@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iniciar sesión - Generador Pangoa</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+</head>
+<body>
+  <div class="aurora-bg" aria-hidden="true">
+    <span class="aurora-blob blob-a"></span>
+    <span class="aurora-blob blob-b"></span>
+    <span class="aurora-blob blob-c"></span>
+  </div>
+
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-icon">🔐</div>
+      <h1>Generador de Documentos</h1>
+      <p class="login-sub">Municipalidad Distrital de Pangoa</p>
+
+      <div id="loginError" class="login-error" hidden></div>
+
+      <label class="field">
+        <span>Correo electrónico</span>
+        <input type="email" id="loginEmail" autocomplete="email" placeholder="tucorreo@ejemplo.com">
+      </label>
+
+      <label class="field">
+        <span>Contraseña</span>
+        <input type="password" id="loginPassword" autocomplete="current-password" placeholder="••••••••">
+      </label>
+
+      <button type="button" id="loginBtn" class="primary-btn">Ingresar</button>
+    </div>
+  </div>
+
+  <script type="module" src="{{ url_for('static', filename='login.js') }}"></script>
+</body>
+</html>
