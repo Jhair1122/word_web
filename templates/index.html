@@ -8,10 +8,10 @@
 </head>
 <body>
   <div class="aurora-bg" aria-hidden="true">
-  <span class="aurora-blob blob-a"></span>
-  <span class="aurora-blob blob-b"></span>
-  <span class="aurora-blob blob-c"></span>
-</div>
+    <span class="aurora-blob blob-a"></span>
+    <span class="aurora-blob blob-b"></span>
+    <span class="aurora-blob blob-c"></span>
+  </div>
 <header class="topbar">
   <div>
     <h1>Generador de documentos Word</h1>
@@ -19,6 +19,7 @@
   </div>
   <div class="actions">
     <button id="themeToggleBtn" class="secondary" type="button" title="Cambiar tema">🌙</button>
+    <a href="/admin" id="adminLink" class="secondary" style="text-decoration:none; display:inline-flex; align-items:center;" hidden>👤 Admin</a>
     <button id="importExcelBtn" class="secondary" type="button">📥 Importar desde Excel</button>
     <input type="file" id="excelFileInput" accept=".xlsx,.xls" hidden>
     <button id="saveJsonBtn" class="secondary">Guardar respaldo</button>
@@ -26,6 +27,7 @@
       <input id="loadJsonInput" type="file" accept=".json" hidden>
     </label>
     <button id="downloadBtn" class="primary">Descargar Word</button>
+    <button id="logoutBtn" class="danger" type="button">Cerrar sesión</button>
   </div>
 </header>
 
@@ -192,6 +194,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
