@@ -1,11 +1,7 @@
 import os
+from functools import wraps
+from flask import Flask, render_template, request, send_file, jsonify, g
 from supabase import create_client, Client
-
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-from flask import Flask, render_template, request, send_file, jsonify
 from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -18,9 +14,63 @@ app = Flask(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATE_PATH = BASE_DIR / "plantilla.docx"
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+
+
+def require_auth(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return jsonify({"error": "No autorizado. Inicia sesión."}), 401
+
+        token = auth_header.split(" ", 1)[1]
+        anon_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+        try:
+            user_resp = anon_client.auth.get_user(token)
+            if not user_resp or not user_resp.user:
+                return jsonify({"error": "Sesión inválida o expirada."}), 401
+        except Exception:
+            return jsonify({"error": "Sesión inválida o expirada."}), 401
+
+        user_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+        user_client.postgrest.auth(token)
+        g.supabase = user_client
+        g.user_id = user_resp.user.id
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def require_admin(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return jsonify({"error": "No autorizado."}), 401
+        token = auth_header.split(" ", 1)[1]
+
+        anon_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+        try:
+            user_resp = anon_client.auth.get_user(token)
+            if not user_resp or not user_resp.user:
+                return jsonify({"error": "Sesión inválida."}), 401
+        except Exception:
+            return jsonify({"error": "Sesión inválida."}), 401
+
+        uid = user_resp.user.id
+        service = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+        prof = service.table("profiles").select("is_admin").eq("id", uid).single().execute()
+        if not prof.data or not prof.data.get("is_admin"):
+            return jsonify({"error": "Se requieren permisos de administrador."}), 403
+
+        g.service_client = service
+        return f(*args, **kwargs)
+    return wrapper
+
 
 def set_cell_value(cell, value, bold=None):
-    """Replace the visible text in a cell while keeping its table/paragraph layout."""
     value = "" if value is None else str(value)
     paragraphs = cell._tc.xpath(".//w:p")
     if not paragraphs:
@@ -31,7 +81,6 @@ def set_cell_value(cell, value, bold=None):
     p = paragraphs[0]
     runs = p.xpath("./w:r")
 
-    # Remove text from all existing runs.
     for run in runs:
         for t in run.xpath("./w:t"):
             run.remove(t)
@@ -67,7 +116,6 @@ def format_date(date_value):
         d = datetime.strptime(date_value, "%Y-%m-%d")
         return d.strftime("%d"), d.strftime("/%m/%Y")
     except ValueError:
-        # Also accept DD/MM/YYYY if the client sends it.
         try:
             d = datetime.strptime(date_value, "%d/%m/%Y")
             return d.strftime("%d"), d.strftime("/%m/%Y")
@@ -76,15 +124,6 @@ def format_date(date_value):
 
 
 def set_date_paragraph(paragraph_element, start_date, final_date):
-    """
-    The original Word uses positioned text boxes for the dates.
-    The first page contains four duplicated text-box representations:
-    two for the start date and two for the final date.
-
-    Nota: los índices 1,2,4,5 corresponden físicamente al recuadro
-    "FECHA FINAL" de la plantilla, y los índices 7,8,10,11 al recuadro
-    "FECHA INICIO", aunque el nombre de las variables sugiera lo contrario.
-    """
     text_nodes = paragraph_element.xpath(".//w:t")
     if len(text_nodes) < 12:
         return
@@ -103,7 +142,6 @@ def set_date_paragraph(paragraph_element, start_date, final_date):
 
 
 def set_year_paragraph(paragraph_element, year):
-    """The year in the original document is represented by duplicated text boxes."""
     year = str(year or "")
     if len(year) >= 4:
         first = year[:2]
@@ -112,7 +150,6 @@ def set_year_paragraph(paragraph_element, year):
         first = year
         second = ""
     text_nodes = paragraph_element.xpath(".//w:t")
-    # First page normally has: 20, 19, 20, 19.
     if len(text_nodes) >= 4:
         text_nodes[0].text = first
         text_nodes[1].text = second
@@ -121,7 +158,6 @@ def set_year_paragraph(paragraph_element, year):
 
 
 def set_text_nodes_in_cell(tc, value):
-    """Write text into the first run of a Word table cell while preserving formatting."""
     value = "" if value is None else str(value)
     text_nodes = tc.xpath(".//w:t")
     paragraphs = tc.xpath(".//w:p")
@@ -150,7 +186,6 @@ def set_row_values(row, subserie, descripcion, folio):
 
 
 def normalize_items(data):
-    """Support the new multiple-row format and migrate pages from the old format."""
     items = data.get("items")
     if isinstance(items, list) and items:
         return [
@@ -161,8 +196,6 @@ def normalize_items(data):
             }
             for item in items
         ]
-
-    # Backwards compatibility with the previous single description/folio fields.
     return [{
         "subserie": str(data.get("subserie", "") or ""),
         "descripcion": str(data.get("descripcion", "") or ""),
@@ -171,10 +204,6 @@ def normalize_items(data):
 
 
 def apply_data(page_nodes, data):
-    # In the original one-page template:
-    # node 5 = main data table
-    # node 10 = date text boxes
-    # node 11 = FECHAS EXTREMAS year text boxes
     table_element = page_nodes[5]
     rows = table_element.xpath("./w:tr")
 
@@ -209,9 +238,6 @@ def apply_data(page_nodes, data):
                 if bold:
                     rpr.append(OxmlElement("w:b"))
 
-    # Row 7 is the header: SUB SERIE | DESCRIPCIÓN | FOLIO.
-    # Row 8 is the original data row. Duplicate that row for every extra item,
-    # preserving the exact borders, widths, fonts and cell formatting of the template.
     base_row = rows[8]
     items = normalize_items(data)
     while len(rows) < 8 + len(items):
@@ -222,7 +248,6 @@ def apply_data(page_nodes, data):
     for index, item in enumerate(items):
         set_row_values(rows[8 + index], item["subserie"], item["descripcion"], item["folio"])
 
-    # Remove any template rows beyond the generated item rows (normally none).
     desired_rows = 8 + len(items)
     rows = table_element.xpath("./w:tr")
     for row in rows[desired_rows:]:
@@ -230,6 +255,7 @@ def apply_data(page_nodes, data):
 
     set_date_paragraph(page_nodes[10], data.get("fecha_inicio", ""), data.get("fecha_final", ""))
     set_year_paragraph(page_nodes[11], data.get("anio", ""))
+
 
 def add_page_break(document):
     p = OxmlElement("w:p")
@@ -248,7 +274,6 @@ def build_document(entries):
     template = Document(str(TEMPLATE_PATH))
     template_body = template._element.body
 
-    # Keep the section properties and remove the original page.
     sectPr = template_body.sectPr
     original_nodes = [deepcopy(child) for child in list(template_body) if child is not sectPr]
 
@@ -277,7 +302,18 @@ def index():
     return render_template("index.html")
 
 
+@app.get("/login")
+def login_page():
+    return render_template("login.html")
+
+
+@app.get("/admin")
+def admin_page():
+    return render_template("admin.html")
+
+
 @app.post("/generar")
+@require_auth
 def generar():
     payload = request.get_json(silent=True) or {}
     entries = payload.get("pages", [])
@@ -306,16 +342,19 @@ def generar():
 def salud():
     return jsonify({"ok": True})
 
+
 @app.get("/paginas")
+@require_auth
 def obtener_paginas():
     try:
-        response = supabase.table("pages").select("*").order("orden").execute()
+        response = g.supabase.table("pages").select("*").order("orden").execute()
         return jsonify({"pages": [row["data"] for row in response.data]})
     except Exception as exc:
         return jsonify({"error": f"No se pudieron obtener las páginas: {exc}"}), 500
 
 
 @app.post("/paginas")
+@require_auth
 def guardar_paginas():
     payload = request.get_json(silent=True) or {}
     entries = payload.get("pages", [])
@@ -324,16 +363,56 @@ def guardar_paginas():
         return jsonify({"error": "Formato inválido."}), 400
 
     try:
-        # Reemplaza todas las páginas: borra lo existente y vuelve a insertar en orden.
-        supabase.table("pages").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+        g.supabase.table("pages").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
 
         if entries:
-            rows = [{"orden": i, "data": entry} for i, entry in enumerate(entries)]
-            supabase.table("pages").insert(rows).execute()
+            rows = [{"orden": i, "data": entry, "user_id": g.user_id} for i, entry in enumerate(entries)]
+            g.supabase.table("pages").insert(rows).execute()
 
         return jsonify({"ok": True})
     except Exception as exc:
         return jsonify({"error": f"No se pudieron guardar las páginas: {exc}"}), 500
+
+
+@app.get("/admin/usuarios")
+@require_admin
+def listar_usuarios():
+    response = g.service_client.table("profiles").select("*").order("created_at").execute()
+    return jsonify({"usuarios": response.data})
+
+
+@app.post("/admin/usuarios")
+@require_admin
+def crear_usuario():
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip()
+    password = payload.get("password") or ""
+    is_admin = bool(payload.get("is_admin", False))
+
+    if not email or len(password) < 6:
+        return jsonify({"error": "Correo y contraseña (mínimo 6 caracteres) son obligatorios."}), 400
+
+    try:
+        result = g.service_client.auth.admin.create_user({
+            "email": email,
+            "password": password,
+            "email_confirm": True
+        })
+        new_id = result.user.id
+        g.service_client.table("profiles").update({"is_admin": is_admin}).eq("id", new_id).execute()
+        return jsonify({"ok": True})
+    except Exception as exc:
+        return jsonify({"error": f"No se pudo crear el usuario: {exc}"}), 500
+
+
+@app.delete("/admin/usuarios/<user_id>")
+@require_admin
+def eliminar_usuario(user_id):
+    try:
+        g.service_client.auth.admin.delete_user(user_id)
+        return jsonify({"ok": True})
+    except Exception as exc:
+        return jsonify({"error": f"No se pudo eliminar: {exc}"}), 500
 
 
 if __name__ == "__main__":
