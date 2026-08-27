@@ -1,3 +1,44 @@
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+const SUPABASE_URL = "https://wojinjaczmwlojihoebp.supabase.co";
+const SUPABASE_ANON_KEY = "TU_ANON_KEY_AQUI";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function guardSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    window.location.href = "/login";
+    return null;
+  }
+  const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", session.user.id).single();
+  const adminLink = document.getElementById("adminLink");
+  if (profile && profile.is_admin && adminLink) adminLink.hidden = false;
+  return session;
+}
+
+async function authFetch(url, options = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    window.location.href = "/login";
+    throw new Error("Sesión expirada.");
+  }
+  const headers = { ...(options.headers || {}), Authorization: `Bearer ${session.access_token}` };
+  const response = await fetch(url, { ...options, headers });
+  if (response.status === 401) {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+    throw new Error("Sesión expirada.");
+  }
+  return response;
+}
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await supabase.auth.signOut();
+  window.location.href = "/login";
+});
+
+const sessionReady = guardSession();
+
 const emptyItem = () => ({ subserie: "", descripcion: "", folio: "" });
 const emptyPage = () => ({
   id: "",
@@ -26,6 +67,8 @@ const currentNumber = document.getElementById("currentNumber");
 const totalPagesEl = document.getElementById("totalPages");
 const pageCount = document.getElementById("pageCount");
 const statusEl = document.getElementById("status");
+const statusIconEl = document.getElementById("statusIconEl");
+const statusTextEl = document.getElementById("statusTextEl");
 const itemsContainer = document.getElementById("itemsContainer");
 const pageSearch = document.getElementById("pageSearch");
 
@@ -42,6 +85,12 @@ const previewCloseBtn = document.getElementById("previewCloseBtn");
 const undoToast = document.getElementById("undoToast");
 const undoMessage = document.getElementById("undoMessage");
 const undoBtn = document.getElementById("undoBtn");
+
+function setStatus(text, icon) {
+  if (statusIconEl) statusIconEl.textContent = icon || "";
+  if (statusTextEl) statusTextEl.textContent = text;
+  else statusEl.textContent = text;
+}
 
 function showConfirm(message) {
   return new Promise((resolve) => {
@@ -73,8 +122,6 @@ function showConfirm(message) {
   });
 }
 
-/* ---------- Deshacer último borrado ---------- */
-
 function showUndoToast(message) {
   clearTimeout(undoTimer);
   undoMessage.textContent = message;
@@ -104,27 +151,25 @@ undoBtn.addEventListener("click", async () => {
   renderPages();
 });
 
-/* ---------- Red / persistencia (sin cambios) ---------- */
-
 async function fetchPages() {
-  const response = await fetch("/paginas");
+  const response = await authFetch("/paginas");
   if (!response.ok) throw new Error("No se pudieron cargar las páginas.");
   const data = await response.json();
   return Array.isArray(data.pages) ? data.pages : [];
 }
 
 async function persist() {
-  statusEl.textContent = "Guardando...";
+  setStatus("Guardando...", "💾");
   try {
-    const response = await fetch("/paginas", {
+    const response = await authFetch("/paginas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pages })
     });
     if (!response.ok) throw new Error("Error al guardar");
-    statusEl.textContent = "Guardado en la nube";
+    setStatus("Guardado en la nube", "✅");
   } catch (err) {
-    statusEl.textContent = "⚠ Error al guardar (revisa tu conexión)";
+    setStatus("⚠ Error al guardar (revisa tu conexión)", "⚠️");
   }
 }
 
@@ -258,8 +303,6 @@ function fillForm(data) {
   totalPagesEl.textContent = pages.length;
 }
 
-/* ---------- Lista de páginas: buscador + arrastrar para reordenar (RESTAURADO) ---------- */
-
 function pageMatchesSearch(page, query) {
   if (!query) return true;
   const q = query.toLowerCase();
@@ -379,11 +422,9 @@ pageSearch.addEventListener("input", () => {
   renderPages();
 });
 
-/* ---------- Guardado en tecleo ---------- */
-
 function handleFormInput() {
   pages[current] = collectFormData();
-  statusEl.textContent = "Guardando...";
+  setStatus("Guardando...", "💾");
   clearTimeout(window.saveTimer);
   window.saveTimer = setTimeout(async () => {
     await persist();
@@ -392,8 +433,6 @@ function handleFormInput() {
 }
 
 form.querySelectorAll("input, textarea").forEach(input => input.addEventListener("input", handleFormInput));
-
-/* ---------- Botones principales ---------- */
 
 document.getElementById("addItemBtn").addEventListener("click", async () => {
   addItem();
@@ -475,8 +514,6 @@ document.getElementById("clearAllBtn").addEventListener("click", async () => {
   renderPages();
 });
 
-/* ---------- Vista previa (RESTAURADO) ---------- */
-
 function buildPreviewTable() {
   const rows = pages.map((raw, i) => {
     const p = normalizePage(raw);
@@ -516,8 +553,6 @@ previewBtn.addEventListener("click", async () => {
 previewCloseBtn.addEventListener("click", () => { previewModal.hidden = true; });
 previewModal.addEventListener("click", (e) => { if (e.target === previewModal) previewModal.hidden = true; });
 
-/* ---------- Descargar Word / respaldo — SIN CAMBIOS ---------- */
-
 async function downloadWord() {
   await saveCurrent();
   const validPages = pages.filter(p => {
@@ -531,7 +566,7 @@ async function downloadWord() {
     return;
   }
 
-  const response = await fetch("/generar", {
+  const response = await authFetch("/generar", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ pages: validPages, filename: "documento_pangoa.docx" })
@@ -593,12 +628,13 @@ document.getElementById("loadJsonInput").addEventListener("change", async (event
 });
 
 async function init() {
-  statusEl.textContent = "Cargando...";
+  setStatus("Cargando...", "⏳");
   try {
     pages = await fetchPages();
   } catch {
     pages = [];
-    statusEl.textContent = "⚠ No se pudo conectar. Intenta recargar la página.";
+    setStatus("⚠ No se pudo conectar. Intenta recargar la página.", "⚠️");
+    return;
   }
 
   if (!pages.length) pages = [emptyPage()];
@@ -607,14 +643,14 @@ async function init() {
 
   fillForm(pages[current]);
   renderPages();
-  if (statusEl.textContent === "Cargando...") statusEl.textContent = "Guardado en la nube";
+  setStatus("Guardado en la nube", "✅");
 }
 
-init();
+sessionReady.then((session) => { if (session) init(); });
 
 
 /* ==========================================================
-   IMPORTAR DESDE EXCEL — sin cambios excepto el bug de subserie
+   IMPORTAR DESDE EXCEL
    ========================================================== */
 
 const importModal = document.getElementById("importModal");
@@ -668,9 +704,6 @@ function findColumns(rows) {
   return found;
 }
 
-/* FIX: antes solo capturaba dígitos finales, así que "C.P N° 901-A"
-   devolvía el texto completo sin recortar. Ahora quita el prefijo
-   "C.P N°" (con sus variantes) y conserva sufijos como "-A". */
 function extractSubserieNumber(value) {
   const str = String(value ?? "").trim();
   const match = str.match(/^C\.?\s*P\.?\s*N[°º]?\.?\s*(.+)$/i);
@@ -884,8 +917,6 @@ async function commitImport(mode) {
 document.getElementById("importReplaceBtn").addEventListener("click", () => commitImport("replace"));
 document.getElementById("importAppendBtn").addEventListener("click", () => commitImport("append"));
 
-/* ---------- Verificar diferencias — SIN CAMBIOS ---------- */
-
 function buildCurrentIndexForCaja(caja) {
   const map = new Map();
   pages.forEach(rawP => {
@@ -985,8 +1016,6 @@ document.getElementById("importVerifyBtn").addEventListener("click", () => {
   if (!cajaPages) return;
   renderDiffReport(caja, cajaPages);
 });
-
-/* ---------- Tema claro/oscuro — SIN CAMBIOS ---------- */
 
 const themeToggleBtn = document.getElementById("themeToggleBtn");
 
