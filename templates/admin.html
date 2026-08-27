@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administrar usuarios - Generador Pangoa</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body>
+  <div class="aurora-bg" aria-hidden="true">
+    <span class="aurora-blob blob-a"></span>
+    <span class="aurora-blob blob-b"></span>
+    <span class="aurora-blob blob-c"></span>
+  </div>
+
+  <header class="topbar">
+    <div>
+      <h1>Administrar usuarios</h1>
+      <p>Generador de Documentos · Municipalidad de Pangoa</p>
+    </div>
+    <div class="actions">
+      <a href="/" class="secondary">← Volver al generador</a>
+      <button id="logoutBtn" class="danger" type="button">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <section class="card">
+      <h2>Crear nuevo usuario</h2>
+      <div id="createError" class="error-box" hidden></div>
+      <div class="form-row">
+        <label>Correo
+          <input type="email" id="newEmail" placeholder="usuario@ejemplo.com">
+        </label>
+        <label>Contraseña
+          <input type="password" id="newPassword" placeholder="Mínimo 6 caracteres">
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="newIsAdmin">
+          <span>Es administrador</span>
+        </label>
+        <button id="createUserBtn" class="primary" type="button">+ Crear usuario</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Usuarios existentes</h2>
+      <div id="usersTableWrap">
+        <p class="muted">Cargando usuarios...</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="confirmDeleteModal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <p id="confirmDeleteMessage"></p>
+      <div class="modal-actions">
+        <button type="button" id="confirmDeleteCancel" class="secondary">Cancelar</button>
+        <button type="button" id="confirmDeleteOk" class="danger">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="{{ url_for('static', filename='admin.js') }}"></script>
+</body>
+</html>
