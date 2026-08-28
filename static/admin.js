@@ -6,7 +6,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const usersTableWrap = document.getElementById("usersTableWrap");
 const createError = document.getElementById("createError");
-const newEmail = document.getElementById("newEmail");
+const newUsername = document.getElementById("newUsername");
 const newPassword = document.getElementById("newPassword");
 const newIsAdmin = document.getElementById("newIsAdmin");
 const createUserBtn = document.getElementById("createUserBtn");
@@ -74,23 +74,23 @@ function renderUsersTable(usuarios) {
   }
   const rows = usuarios.map(u => `
     <tr>
-      <td>${u.email || "-"}</td>
+      <td>${u.username || "-"}</td>
       <td>${u.is_admin ? '<span class="badge-admin">Admin</span>' : '<span class="badge-user">Usuario</span>'}</td>
       <td>${u.created_at ? new Date(u.created_at).toLocaleDateString("es-PE") : "-"}</td>
-      <td><button class="danger" data-id="${u.id}" data-email="${u.email}">Eliminar</button></td>
+      <td><button class="danger" data-id="${u.id}" data-username="${u.username}">Eliminar</button></td>
     </tr>
   `).join("");
 
   usersTableWrap.innerHTML = `
     <table class="users-table">
-      <thead><tr><th>Correo</th><th>Rol</th><th>Creado</th><th></th></tr></thead>
+      <thead><tr><th>Usuario</th><th>Rol</th><th>Creado</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
 
   usersTableWrap.querySelectorAll("button[data-id]").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const ok = await showConfirm(`¿Eliminar al usuario "${btn.dataset.email}"? Esta acción no se puede deshacer.`);
+      const ok = await showConfirm(`¿Eliminar al usuario "${btn.dataset.username}"? Esta acción no se puede deshacer.`);
       if (!ok) return;
       try {
         await authFetch(`/admin/usuarios/${btn.dataset.id}`, { method: "DELETE" });
@@ -104,12 +104,12 @@ function renderUsersTable(usuarios) {
 
 createUserBtn.addEventListener("click", async () => {
   createError.hidden = true;
-  const email = newEmail.value.trim();
+  const username = newUsername.value.trim();
   const password = newPassword.value;
   const isAdmin = newIsAdmin.checked;
 
-  if (!email || password.length < 6) {
-    createError.textContent = "Correo válido y contraseña de al menos 6 caracteres son obligatorios.";
+  if (!username || password.length < 6) {
+    createError.textContent = "Usuario y contraseña de al menos 6 caracteres son obligatorios.";
     createError.hidden = false;
     return;
   }
@@ -121,12 +121,12 @@ createUserBtn.addEventListener("click", async () => {
     const res = await authFetch("/admin/usuarios", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, is_admin: isAdmin })
+      body: JSON.stringify({ username, password, is_admin: isAdmin })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Error al crear usuario.");
 
-    newEmail.value = "";
+    newUsername.value = "";
     newPassword.value = "";
     newIsAdmin.checked = false;
     cargarUsuarios();
@@ -147,6 +147,13 @@ logoutBtn.addEventListener("click", async () => {
 async function init() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) { window.location.href = "/login"; return; }
+
+  const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", session.user.id).single();
+  if (!profile || !profile.is_admin) {
+    window.location.href = "/";
+    return;
+  }
+
   cargarUsuarios();
 }
 
