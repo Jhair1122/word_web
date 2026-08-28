@@ -1,7 +1,7 @@
 import os
 import re
 from functools import wraps
-from flask import Flask, render_template, request, send_file, jsonify, g
+from flask import Flask, render_template, request, send_file, jsonify, g, redirect
 from supabase import create_client, Client
 from docx import Document
 from docx.oxml import OxmlElement
@@ -69,6 +69,34 @@ def require_admin(f):
         g.service_client = service
         return f(*args, **kwargs)
     return wrapper
+
+
+def is_request_from_admin_cookie():
+    """
+    Verifica, a partir de la cookie sb_access_token (reflejo de la sesión de
+    Supabase mantenido por static/auth-sync.js), si quien hace la petición
+    de navegación (GET) es un administrador. Se usa para bloquear el render
+    de páginas HTML completas, no solo las llamadas a la API.
+    """
+    token = request.cookies.get("sb_access_token")
+    if not token:
+        return False
+
+    anon_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+    try:
+        user_resp = anon_client.auth.get_user(token)
+        if not user_resp or not user_resp.user:
+            return False
+    except Exception:
+        return False
+
+    service = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    try:
+        prof = service.table("profiles").select("is_admin").eq("id", user_resp.user.id).single().execute()
+    except Exception:
+        return False
+
+    return bool(prof.data and prof.data.get("is_admin"))
 
 
 def set_cell_value(cell, value, bold=None):
@@ -310,6 +338,8 @@ def login_page():
 
 @app.get("/admin")
 def admin_page():
+    if not is_request_from_admin_cookie():
+        return redirect("/")
     return render_template("admin.html")
 
 
