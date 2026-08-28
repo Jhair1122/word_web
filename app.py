@@ -1,4 +1,5 @@
 import os
+import re
 from functools import wraps
 from flask import Flask, render_template, request, send_file, jsonify, g
 from supabase import create_client, Client
@@ -385,24 +386,70 @@ def listar_usuarios():
 @require_admin
 def crear_usuario():
     payload = request.get_json(silent=True) or {}
-    email = (payload.get("email") or "").strip()
+    username_raw = (payload.get("username") or "").strip()
     password = payload.get("password") or ""
     is_admin = bool(payload.get("is_admin", False))
 
-    if not email or len(password) < 6:
-        return jsonify({"error": "Correo y contraseña (mínimo 6 caracteres) son obligatorios."}), 400
+    if not username_raw or len(password) < 6:
+        return jsonify({"error": "Usuario y contraseña (mínimo 6 caracteres) son obligatorios."}), 400
+
+    username = re.sub(r"[^a-zA-Z0-9_.-]", "", username_raw).lower()
+    if not username:
+        return jsonify({"error": "El nombre de usuario contiene caracteres no válidos."}), 400
+
+    existing = g.service_client.table("profiles").select("id").eq("username", username).execute()
+    if existing.data:
+        return jsonify({"error": "Ese nombre de usuario ya existe."}), 400
+
+    synthetic_email = f"{username}@pangoa.local"
 
     try:
         result = g.service_client.auth.admin.create_user({
-            "email": email,
+            "email": synthetic_email,
             "password": password,
-            "email_confirm": True
+            "email_confirm": True,
+            "user_metadata": {"username": username}
         })
         new_id = result.user.id
-        g.service_client.table("profiles").update({"is_admin": is_admin}).eq("id", new_id).execute()
+        g.service_client.table("profiles").update({
+            "is_admin": is_admin,
+            "username": username
+        }).eq("id", new_id).execute()
         return jsonify({"ok": True})
     except Exception as exc:
         return jsonify({"error": f"No se pudo crear el usuario: {exc}"}), 500
+
+
+@app.post("/auth/login")
+def login_con_usuario():
+    payload = request.get_json(silent=True) or {}
+    username = re.sub(r"[^a-zA-Z0-9_.-]", "", (payload.get("username") or "").strip()).lower()
+    password = payload.get("password") or ""
+
+    if not username or not password:
+        return jsonify({"error": "Usuario y contraseña son obligatorios."}), 400
+
+    service = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    prof = service.table("profiles").select("email").eq("username", username).execute()
+    rows = prof.data or []
+    if not rows:
+        return jsonify({"error": "Usuario o contraseña incorrectos."}), 401
+    email = rows[0]["email"]
+
+    anon_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+    try:
+        auth_resp = anon_client.auth.sign_in_with_password({"email": email, "password": password})
+    except Exception:
+        return jsonify({"error": "Usuario o contraseña incorrectos."}), 401
+
+    session = auth_resp.session
+    if not session:
+        return jsonify({"error": "Usuario o contraseña incorrectos."}), 401
+
+    return jsonify({
+        "access_token": session.access_token,
+        "refresh_token": session.refresh_token
+    })
 
 
 @app.delete("/admin/usuarios/<user_id>")
