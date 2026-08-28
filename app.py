@@ -397,7 +397,7 @@ def crear_usuario():
     if not username:
         return jsonify({"error": "El nombre de usuario contiene caracteres no válidos."}), 400
 
-    existing = g.service_client.table("profiles").select("id").eq("username", username).execute()
+    existing = g.service_client.table("profiles").select("id").ilike("username", username).execute()
     if existing.data:
         return jsonify({"error": "Ese nombre de usuario ya existe."}), 400
 
@@ -430,7 +430,7 @@ def login_con_usuario():
         return jsonify({"error": "Usuario y contraseña son obligatorios."}), 400
 
     service = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    prof = service.table("profiles").select("email").eq("username", username).execute()
+    prof = service.table("profiles").select("email").ilike("username", username).execute()
     rows = prof.data or []
     if not rows:
         return jsonify({"error": "Usuario o contraseña incorrectos."}), 401
