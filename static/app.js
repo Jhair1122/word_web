@@ -308,11 +308,9 @@ function fillForm(data) {
 function pageMatchesSearch(page, query) {
   if (!query) return true;
   const q = query.toLowerCase();
-  const first = page.items[0] || emptyItem();
-  const haystack = [
-    page.id, page.sobre, page.cod_serie, page.codigo,
-    first.subserie, first.descripcion, first.folio
-  ].join(" ").toLowerCase();
+  const items = (page.items && page.items.length) ? page.items : [emptyItem()];
+  const subseries = items.map(it => it.subserie || "").join(" ");
+  const haystack = [page.sobre || "", subseries].join(" ").toLowerCase();
   return haystack.includes(q);
 }
 
