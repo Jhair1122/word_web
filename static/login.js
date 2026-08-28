@@ -1,10 +1,10 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 const SUPABASE_URL = "https://wojinjaczmwlojihoebp.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvamluamFjem13bG9qaWhvZWJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwODQ2MzgsImV4cCI6MjEwMjY2MDYzOH0.VY5RVZVJMgDoYl-4BoAwe4h0IrKoHv_wJvpMdSjVdr4";
+const SUPABASE_ANON_KEY = "TU_ANON_KEY_AQUI";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const loginEmail = document.getElementById("loginEmail");
+const loginUsername = document.getElementById("loginUsername");
 const loginPassword = document.getElementById("loginPassword");
 const loginBtn = document.getElementById("loginBtn");
 const loginError = document.getElementById("loginError");
@@ -17,11 +17,11 @@ redirectIfAlreadyLogged();
 
 async function doLogin() {
   loginError.hidden = true;
-  const email = loginEmail.value.trim();
+  const username = loginUsername.value.trim();
   const password = loginPassword.value;
 
-  if (!email || !password) {
-    loginError.textContent = "Ingresa tu correo y contraseña.";
+  if (!username || !password) {
+    loginError.textContent = "Ingresa tu usuario y contraseña.";
     loginError.hidden = false;
     return;
   }
@@ -29,20 +29,44 @@ async function doLogin() {
   loginBtn.disabled = true;
   loginBtn.textContent = "Ingresando...";
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  try {
+    const response = await fetch("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await response.json();
 
-  loginBtn.disabled = false;
-  loginBtn.textContent = "Ingresar";
+    if (!response.ok) {
+      loginError.textContent = data.error || "Usuario o contraseña incorrectos.";
+      loginError.hidden = false;
+      loginBtn.disabled = false;
+      loginBtn.textContent = "Ingresar";
+      return;
+    }
 
-  if (error) {
-    loginError.textContent = "Correo o contraseña incorrectos.";
+    const { error } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token
+    });
+
+    if (error) {
+      loginError.textContent = "No se pudo iniciar sesión.";
+      loginError.hidden = false;
+      loginBtn.disabled = false;
+      loginBtn.textContent = "Ingresar";
+      return;
+    }
+
+    window.location.href = "/";
+  } catch (e) {
+    loginError.textContent = "Error de conexión. Intenta de nuevo.";
     loginError.hidden = false;
-    return;
+    loginBtn.disabled = false;
+    loginBtn.textContent = "Ingresar";
   }
-
-  window.location.href = "/";
 }
 
 loginBtn.addEventListener("click", doLogin);
 loginPassword.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-loginEmail.addEventListener("keydown", (e) => { if (e.key === "Enter") loginPassword.focus(); });
+loginUsername.addEventListener("keydown", (e) => { if (e.key === "Enter") loginPassword.focus(); });
