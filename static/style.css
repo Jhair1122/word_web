@@ -162,6 +162,18 @@ button, .file-btn {
 }
 button:hover, .file-btn:hover { transform: translateY(-1px); }
 
+/* Enlace de admin: mismo look que .secondary, pero definido como clase
+   (no como style inline) para que el atributo [hidden] pueda ocultarlo
+   de verdad cuando el usuario no es administrador. */
+.admin-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.admin-link[hidden] {
+  display: none;
+}
+
 .primary {
   background: linear-gradient(160deg, var(--accent-a) 0%, var(--accent-b) 100%);
   color: #fff;
@@ -646,9 +658,3 @@ footer {
 
 .page-item.dragging { opacity: .4; }
 .page-item.drag-over { border-top: 3px solid var(--accent-a); }
-
-.admin-link {
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-}
