@@ -646,3 +646,9 @@ footer {
 
 .page-item.dragging { opacity: .4; }
 .page-item.drag-over { border-top: 3px solid var(--accent-a); }
+
+.admin-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
