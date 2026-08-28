@@ -20,6 +20,22 @@ SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
 
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Ruta no encontrada."}), 404
+
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return jsonify({"error": "Método no permitido."}), 405
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(e):
+    app.logger.exception("Error no manejado")
+    return jsonify({"error": f"Error interno: {e}"}), 500
+
+
 def require_auth(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -62,8 +78,9 @@ def require_admin(f):
 
         uid = user_resp.user.id
         service = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        prof = service.table("profiles").select("is_admin").eq("id", uid).single().execute()
-        if not prof.data or not prof.data.get("is_admin"):
+        prof_resp = service.table("profiles").select("is_admin").eq("id", uid).execute()
+        rows = prof_resp.data or []
+        if not rows or not rows[0].get("is_admin"):
             return jsonify({"error": "Se requieren permisos de administrador."}), 403
 
         g.service_client = service
@@ -92,11 +109,12 @@ def is_request_from_admin_cookie():
 
     service = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     try:
-        prof = service.table("profiles").select("is_admin").eq("id", user_resp.user.id).single().execute()
+        prof_resp = service.table("profiles").select("is_admin").eq("id", user_resp.user.id).execute()
     except Exception:
         return False
 
-    return bool(prof.data and prof.data.get("is_admin"))
+    rows = prof_resp.data or []
+    return bool(rows and rows[0].get("is_admin"))
 
 
 def set_cell_value(cell, value, bold=None):
