@@ -38,10 +38,16 @@
         <span class="eyebrow">PÁGINA <span id="currentNumber">1</span> DE <span id="totalPages">1</span></span>
         <h2>Datos del sobre</h2>
       </div>
-      <span id="status" class="status">
-        <span id="statusIconEl">⏳</span>
-        <span id="statusTextEl">Conectando...</span>
-      </span>
+            <div class="status-group">
+        <span id="status" class="status">
+          <span id="statusIconEl">⏳</span>
+          <span id="statusTextEl">Conectando...</span>
+        </span>
+        <span id="connCountdown" class="conn-countdown state-green">
+          <span id="connCountdownIcon">🟢</span>
+          <span id="connCountdownText">Conexión: 15:00</span>
+        </span>
+      </div>
     </div>
 
     <form id="pageForm">
@@ -188,6 +194,7 @@
   </div>
 </div>
 
+<div id="connToast" class="conn-toast" hidden></div>
 <div id="undoToast" class="undo-toast" hidden>
   <span id="undoMessage"></span>
   <button type="button" id="undoBtn" class="secondary">Deshacer</button>
