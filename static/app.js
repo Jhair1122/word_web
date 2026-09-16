@@ -26,6 +26,7 @@ async function authFetch(url, options = {}) {
   }
   const headers = { ...(options.headers || {}), Authorization: `Bearer ${session.access_token}` };
   const response = await fetch(url, { ...options, headers });
+  resetConnCountdown(); // el servidor respondió: se reinicia el reloj de inactividad de Render
   if (response.status === 401) {
     await supabase.auth.signOut();
     window.location.href = "/login";
@@ -1035,3 +1036,72 @@ themeToggleBtn.addEventListener("click", () => {
 });
 
 initTheme();
+
+/* ==========================================================
+   CONTADOR DE CONEXIÓN RENDER/SUPABASE
+   ========================================================== */
+
+const CONN_TOTAL_SECONDS = 15 * 60; // Render free tier suele dormirse a los ~15 min sin peticiones
+const CONN_YELLOW_AT = 5 * 60;      // pasa a amarillo cuando quedan 5 min
+const CONN_RED_AT = 60;             // pasa a rojo cuando queda 1 min
+
+const connCountdownEl = document.getElementById("connCountdown");
+const connCountdownIconEl = document.getElementById("connCountdownIcon");
+const connCountdownTextEl = document.getElementById("connCountdownText");
+const connToastEl = document.getElementById("connToast");
+
+let connSecondsLeft = CONN_TOTAL_SECONDS;
+let connState = "green";
+let connInterval = null;
+let connToastTimer = null;
+
+function formatMMSS(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function showConnToast(message, level) {
+  connToastEl.textContent = message;
+  connToastEl.className = "conn-toast state-" + level;
+  connToastEl.hidden = false;
+  clearTimeout(connToastTimer);
+  connToastTimer = setTimeout(() => { connToastEl.hidden = true; }, 8000);
+}
+
+function updateConnUI() {
+  connCountdownTextEl.textContent = connSecondsLeft > 0
+    ? `Conexión: ${formatMMSS(connSecondsLeft)}`
+    : "Conexión: reiniciando...";
+
+  let newState = "green";
+  if (connSecondsLeft <= CONN_RED_AT) newState = "red";
+  else if (connSecondsLeft <= CONN_YELLOW_AT) newState = "yellow";
+
+  if (newState !== connState) {
+    connState = newState;
+    connCountdownEl.classList.remove("state-green", "state-yellow", "state-red");
+    connCountdownEl.classList.add("state-" + newState);
+    connCountdownIconEl.textContent = newState === "green" ? "🟢" : newState === "yellow" ? "🟡" : "🔴";
+
+    if (newState === "yellow") {
+      showConnToast("⚠️ Queda poco tiempo de inactividad: el servidor podría ponerse en reposo pronto. Cualquier acción (guardar, cambiar de página) lo mantiene activo.", "yellow");
+    } else if (newState === "red") {
+      showConnToast("🔴 El servidor está a punto de dormirse por inactividad. La próxima acción tardará unos segundos extra mientras se reactiva.", "red");
+    }
+  }
+}
+
+function startConnInterval() {
+  if (connInterval) return;
+  connInterval = setInterval(() => {
+    connSecondsLeft = Math.max(0, connSecondsLeft - 1);
+    updateConnUI();
+  }, 1000);
+}
+
+function resetConnCountdown() {
+  connSecondsLeft = CONN_TOTAL_SECONDS;
+  updateConnUI();
+  startConnInterval();
+}
