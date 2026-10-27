@@ -554,6 +554,18 @@ previewBtn.addEventListener("click", async () => {
 previewCloseBtn.addEventListener("click", () => { previewModal.hidden = true; });
 previewModal.addEventListener("click", (e) => { if (e.target === previewModal) previewModal.hidden = true; });
 
+// Nombre del archivo: "CAJA - <N° de caja>.docx".
+// Si el documento mezcla varias cajas, las une: "CAJA - 12 y 20.docx".
+function buildDownloadFilename(validPages) {
+  const cajas = [];
+  validPages.forEach(p => {
+    const c = String(p.caja ?? "").trim().replace(/[\\/:*?"<>|]/g, "");
+    if (c && !cajas.includes(c)) cajas.push(c);
+  });
+  if (!cajas.length) return "documento_pangoa.docx";
+  return `CAJA - ${cajas.join(" y ")}.docx`;
+}
+
 async function downloadWord() {
   await saveCurrent();
   const validPages = pages.filter(p => {
@@ -567,10 +579,12 @@ async function downloadWord() {
     return;
   }
 
+  const filename = buildDownloadFilename(validPages);
+
   const response = await authFetch("/generar", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ pages: validPages, filename: "documento_pangoa.docx" })
+    body: JSON.stringify({ pages: validPages, filename })
   });
 
   if (!response.ok) {
@@ -587,7 +601,7 @@ async function downloadWord() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "documento_pangoa.docx";
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
