@@ -1,4 +1,4 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/+esm";
 import { setupAuthCookieSync } from "./auth-sync.js";
 
 const SUPABASE_URL = "https://wojinjaczmwlojihoebp.supabase.co";
@@ -31,6 +31,9 @@ async function authFetch(url, options = {}) {
     await supabase.auth.signOut();
     window.location.href = "/login";
     throw new Error("Sesión expirada.");
+  }
+  if (response.status === 429) {
+    showToast("Demasiadas solicitudes seguidas. Espera unos segundos e intenta de nuevo.", "error");
   }
   return response;
 }
@@ -93,6 +96,31 @@ function setStatus(text, icon) {
   if (statusIconEl) statusIconEl.textContent = icon || "";
   if (statusTextEl) statusTextEl.textContent = text;
   else statusEl.textContent = text;
+}
+
+const MAX_PAGES = 500; // mismo límite que el servidor
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+let toastEl = null;
+let toastTimer = null;
+function showToast(message, level = "info") {
+  if (!toastEl) {
+    toastEl = document.createElement("div");
+    toastEl.id = "appToast";
+    toastEl.setAttribute("role", "status");
+    toastEl.setAttribute("aria-live", "polite");
+    document.body.appendChild(toastEl);
+  }
+  toastEl.className = "app-toast state-" + level;
+  toastEl.textContent = message;
+  toastEl.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.hidden = true; }, 6000);
 }
 
 function showConfirm(message) {
@@ -161,18 +189,44 @@ async function fetchPages() {
   return Array.isArray(data.pages) ? data.pages : [];
 }
 
+// Evita guardar dos veces lo mismo y evita que dos guardados se pisen entre sí.
+let lastSavedSnapshot = null;
+let saveInFlight = false;
+let savePending = false;
+
 async function persist() {
+  const snapshot = JSON.stringify({ pages });
+  if (snapshot === lastSavedSnapshot) {
+    setStatus("Guardado en la nube", "✅");
+    return;
+  }
+  if (saveInFlight) {
+    savePending = true;
+    return;
+  }
+  saveInFlight = true;
   setStatus("Guardando...", "💾");
   try {
     const response = await authFetch("/paginas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pages })
+      body: snapshot
     });
-    if (!response.ok) throw new Error("Error al guardar");
+    if (!response.ok) {
+      let detail = "";
+      try { detail = (await response.json()).error || ""; } catch {}
+      throw new Error(detail || "Error al guardar");
+    }
+    lastSavedSnapshot = snapshot;
     setStatus("Guardado en la nube", "✅");
   } catch (err) {
-    setStatus("⚠ Error al guardar (revisa tu conexión)", "⚠️");
+    setStatus("⚠ No se pudo guardar. Se reintentará con tu próximo cambio.", "⚠️");
+  } finally {
+    saveInFlight = false;
+    if (savePending) {
+      savePending = false;
+      await persist();
+    }
   }
 }
 
@@ -326,9 +380,11 @@ function renderPages() {
     const page = normalizePage(rawPage);
     if (!pageMatchesSearch(page, searchQuery)) return;
 
-    const button = document.createElement("button");
+    const button = document.createElement("div");
     button.className = "page-item" + (index === current ? " active" : "");
-    button.type = "button";
+    button.setAttribute("role", "button");
+    button.tabIndex = 0;
+    if (index === current) button.setAttribute("aria-current", "true");
     button.draggable = dragEnabled;
 
     const firstItem = page.items[0] || emptyItem();
@@ -339,10 +395,12 @@ function renderPages() {
     const desc = firstItem.descripcion || "Sin descripción";
     description.textContent = `${firstItem.subserie ? firstItem.subserie + " · " : ""}${desc}${page.items.length > 1 ? ` · +${page.items.length - 1} cuadro(s)` : ""}`;
 
-    const removeBtn = document.createElement("span");
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
     removeBtn.textContent = "✕";
     removeBtn.className = "page-remove";
     removeBtn.title = "Eliminar esta página";
+    removeBtn.setAttribute("aria-label", `Eliminar la página ${index + 1}`);
     removeBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (pages.length === 1) {
@@ -373,6 +431,10 @@ function renderPages() {
     row.append(textWrap, removeBtn);
 
     button.appendChild(row);
+    button.addEventListener("keydown", (e) => {
+      if (e.target !== button) return;
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); button.click(); }
+    });
     button.addEventListener("click", async () => {
       await saveCurrent();
       current = index;
@@ -416,6 +478,25 @@ function renderPages() {
 
     pagesList.appendChild(button);
   });
+
+  if (searchQuery && !pagesList.children.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    const msg = document.createElement("p");
+    msg.textContent = `No hay páginas con "${searchQuery}". Prueba con otro N° de sobre o sub serie.`;
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "secondary";
+    clearBtn.textContent = "Borrar búsqueda";
+    clearBtn.addEventListener("click", () => {
+      pageSearch.value = "";
+      searchQuery = "";
+      renderPages();
+      pageSearch.focus();
+    });
+    empty.append(msg, clearBtn);
+    pagesList.appendChild(empty);
+  }
 }
 
 pageSearch.addEventListener("input", () => {
@@ -523,12 +604,12 @@ function buildPreviewTable() {
     return `
       <tr>
         <td>${i + 1}</td>
-        <td>${p.sobre || "-"}</td>
-        <td>${p.id || "-"}</td>
-        <td>${p.seccion || "-"}</td>
-        <td>${p.fecha_inicio || "-"} → ${p.fecha_final || "-"}</td>
-        <td>${foliosResumen}</td>
-        <td>${descResumen}</td>
+        <td>${escapeHtml(p.sobre || "-")}</td>
+        <td>${escapeHtml(p.id || "-")}</td>
+        <td>${escapeHtml(p.seccion || "-")}</td>
+        <td>${escapeHtml(p.fecha_inicio || "-")} → ${escapeHtml(p.fecha_final || "-")}</td>
+        <td>${escapeHtml(foliosResumen)}</td>
+        <td>${escapeHtml(descResumen)}</td>
       </tr>
     `;
   }).join("");
@@ -552,13 +633,27 @@ previewBtn.addEventListener("click", async () => {
 });
 
 previewCloseBtn.addEventListener("click", () => { previewModal.hidden = true; });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !confirmModal.hidden) return;
+  if (!previewModal.hidden) previewModal.hidden = true;
+  else if (!importModal.hidden) importModal.hidden = true;
+});
 previewModal.addEventListener("click", (e) => { if (e.target === previewModal) previewModal.hidden = true; });
 
 // Nombre del archivo: "CAJA - <N° de caja>.docx".
 // Si el documento mezcla varias cajas, las une: "CAJA - 12 y 20.docx".
+// Las páginas en blanco (solo con los valores por defecto) no cuentan para el nombre.
+function pageHasRealContent(p) {
+  const items = Array.isArray(p.items) ? p.items : [];
+  return [p.id, p.cod_serie, p.sobre, p.fecha_inicio, p.fecha_final].some(v => String(v ?? "").trim() !== "")
+    || items.some(i => Object.values(i).some(v => String(v ?? "").trim() !== ""));
+}
+
 function buildDownloadFilename(validPages) {
+  const withContent = validPages.filter(pageHasRealContent);
+  const source = withContent.length ? withContent : validPages;
   const cajas = [];
-  validPages.forEach(p => {
+  source.forEach(p => {
     const c = String(p.caja ?? "").trim().replace(/[\\/:*?"<>|]/g, "");
     if (c && !cajas.includes(c)) cajas.push(c);
   });
@@ -566,46 +661,64 @@ function buildDownloadFilename(validPages) {
   return `CAJA - ${cajas.join(" y ")}.docx`;
 }
 
+const downloadButtons = [document.getElementById("downloadBtn"), document.getElementById("downloadBtn2")];
+let downloading = false;
+
 async function downloadWord() {
-  await saveCurrent();
-  const validPages = pages.filter(p => {
-    const items = Array.isArray(p.items) ? p.items : [];
-    return [p.id, p.caja, p.cod_serie, p.sobre, p.codigo, p.seccion, p.serie_doc, p.fecha_inicio, p.fecha_final, p.anio]
-      .some(v => String(v ?? "").trim() !== "") || items.some(i => Object.values(i).some(v => String(v ?? "").trim() !== ""));
-  });
+  if (downloading) return; // evita descargas dobles por doble clic
+  downloading = true;
+  const labels = downloadButtons.map(b => b.textContent);
+  downloadButtons.forEach(b => { b.disabled = true; b.textContent = "Generando..."; });
 
-  if (!validPages.length) {
-    alert("Agrega al menos una página.");
-    return;
+  try {
+    await saveCurrent();
+    const validPages = pages.filter(p => {
+      const items = Array.isArray(p.items) ? p.items : [];
+      return [p.id, p.caja, p.cod_serie, p.sobre, p.codigo, p.seccion, p.serie_doc, p.fecha_inicio, p.fecha_final, p.anio]
+        .some(v => String(v ?? "").trim() !== "") || items.some(i => Object.values(i).some(v => String(v ?? "").trim() !== ""));
+    });
+
+    if (!validPages.length) {
+      showToast("Agrega al menos una página antes de descargar.", "error");
+      return;
+    }
+
+    const filename = buildDownloadFilename(validPages);
+
+    const response = await authFetch("/generar", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ pages: validPages, filename })
+    });
+
+    if (!response.ok) {
+      if (response.status !== 429) {
+        let message = "No se pudo generar el documento.";
+        try {
+          const data = await response.json();
+          message = data.error || message;
+        } catch {}
+        showToast(message, "error");
+      }
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`Descargado: ${filename}`, "success");
+  } catch (err) {
+    showToast("No se pudo generar el documento. Revisa tu conexión e intenta de nuevo.", "error");
+  } finally {
+    downloadButtons.forEach((b, i) => { b.disabled = false; b.textContent = labels[i]; });
+    downloading = false;
   }
-
-  const filename = buildDownloadFilename(validPages);
-
-  const response = await authFetch("/generar", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ pages: validPages, filename })
-  });
-
-  if (!response.ok) {
-    let message = "No se pudo generar el documento.";
-    try {
-      const data = await response.json();
-      message = data.error || message;
-    } catch {}
-    alert(message);
-    return;
-  }
-
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 document.getElementById("downloadBtn").addEventListener("click", downloadWord);
@@ -628,16 +741,18 @@ document.getElementById("loadJsonInput").addEventListener("change", async (event
   const file = event.target.files[0];
   if (!file) return;
   try {
+    if (file.size > 5 * 1024 * 1024) throw new Error("El archivo es demasiado grande (máximo 5 MB).");
     const data = JSON.parse(await file.text());
     if (!Array.isArray(data.pages) || !data.pages.length) throw new Error("El respaldo no contiene páginas.");
+    if (data.pages.length > MAX_PAGES) throw new Error(`El respaldo supera el máximo de ${MAX_PAGES} páginas.`);
     pages = data.pages.map(normalizePage);
     current = 0;
     fillForm(pages[0]);
     await persist();
     renderPages();
-    alert("Respaldo cargado y guardado en la nube correctamente.");
+    showToast("Respaldo cargado y guardado en la nube correctamente.", "success");
   } catch (error) {
-    alert("No se pudo cargar el respaldo: " + error.message);
+    showToast("No se pudo cargar el respaldo: " + error.message, "error");
   }
   event.target.value = "";
 });
@@ -655,6 +770,7 @@ async function init() {
   if (!pages.length) pages = [emptyPage()];
   pages = pages.map(normalizePage);
   current = 0;
+  lastSavedSnapshot = JSON.stringify({ pages });
 
   fillForm(pages[current]);
   renderPages();
@@ -831,10 +947,10 @@ function renderImportPreview(cajaPages) {
 
   const rowsHtml = cajaPages.slice(0, 8).map(p => `
     <tr>
-      <td>Sobre ${p.sobre}</td>
+      <td>Sobre ${escapeHtml(p.sobre)}</td>
       <td>${p.items.length} cuadro(s)</td>
-      <td>${p.fecha_inicio || "-"} → ${p.fecha_final || "-"}</td>
-      <td>${p.items[0] ? p.items[0].descripcion.slice(0, 70) + (p.items[0].descripcion.length > 70 ? "…" : "") : "-"}</td>
+      <td>${escapeHtml(p.fecha_inicio || "-")} → ${escapeHtml(p.fecha_final || "-")}</td>
+      <td>${p.items[0] ? escapeHtml(p.items[0].descripcion.slice(0, 70) + (p.items[0].descripcion.length > 70 ? "…" : "")) : "-"}</td>
     </tr>
   `).join("");
 
@@ -867,6 +983,12 @@ importPickFileBtn.addEventListener("click", () => excelFileInput.click());
 excelFileInput.addEventListener("change", async (event) => {
   const file = event.target.files[0];
   if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    importFileStatus.textContent = "El archivo es demasiado grande (máximo 10 MB).";
+    event.target.value = "";
+    return;
+  }
 
   importFileStatus.textContent = "Leyendo archivo...";
 
@@ -1015,7 +1137,7 @@ function renderDiffReport(caja, excelPages) {
     return;
   }
 
-  const rows = issues.map(i => `<tr><td>Sobre ${i.sobre}</td><td>${i.detail}</td></tr>`).join("");
+  const rows = issues.map(i => `<tr><td>Sobre ${escapeHtml(i.sobre)}</td><td>${escapeHtml(i.detail)}</td></tr>`).join("");
   wrap.innerHTML = `
     <p style="color:#c0392b; font-weight:650; margin-top:10px;">⚠️ Se encontraron ${issues.length} diferencia(s) en la Caja ${caja}:</p>
     <table class="preview-table">
