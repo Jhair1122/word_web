@@ -99,3 +99,7 @@ h1 { margin: 0; font-size: 21px; text-align: center; font-weight: 800; }
 .primary-btn:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 10px 26px rgba(90,125,255,.45); }
 .primary-btn:active { transform: translateY(0); }
 .primary-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.show-pass { display: flex; align-items: center; gap: 8px; margin-top: -6px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+.show-pass input { width: 16px; height: 16px; }
+.login-note { margin: 4px 0 0; font-size: 12px; line-height: 1.45; color: var(--text-muted); text-align: center; }
+.primary-btn:focus-visible, .show-pass input:focus-visible { outline: 2px solid var(--accent-a); outline-offset: 2px; }
