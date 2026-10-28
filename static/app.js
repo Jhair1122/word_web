@@ -92,8 +92,11 @@ const undoToast = document.getElementById("undoToast");
 const undoMessage = document.getElementById("undoMessage");
 const undoBtn = document.getElementById("undoBtn");
 
+const STATUS_STATES = { "✅": "saved", "💾": "saving", "⏳": "loading", "⚠️": "error" };
+
 function setStatus(text, icon) {
-  if (statusIconEl) statusIconEl.textContent = icon || "";
+  if (statusEl) statusEl.dataset.state = STATUS_STATES[icon] || "loading";
+  if (statusIconEl) statusIconEl.textContent = "";
   if (statusTextEl) statusTextEl.textContent = text;
   else statusEl.textContent = text;
 }
@@ -220,7 +223,7 @@ async function persist() {
     lastSavedSnapshot = snapshot;
     setStatus("Guardado en la nube", "✅");
   } catch (err) {
-    setStatus("⚠ No se pudo guardar. Se reintentará con tu próximo cambio.", "⚠️");
+    setStatus("No se pudo guardar. Se reintentará con tu próximo cambio.", "⚠️");
   } finally {
     saveInFlight = false;
     if (savePending) {
@@ -423,9 +426,7 @@ function renderPages() {
     });
 
     const row = document.createElement("div");
-    row.style.display = "flex";
-    row.style.justifyContent = "space-between";
-    row.style.alignItems = "flex-start";
+    row.className = "page-item-row";
     const textWrap = document.createElement("div");
     textWrap.append(title, description);
     row.append(textWrap, removeBtn);
@@ -763,7 +764,7 @@ async function init() {
     pages = await fetchPages();
   } catch {
     pages = [];
-    setStatus("⚠ No se pudo conectar. Intenta recargar la página.", "⚠️");
+    setStatus("No se pudo conectar. Intenta recargar la página.", "⚠️");
     return;
   }
 
@@ -963,7 +964,7 @@ function renderImportPreview(cajaPages) {
   `;
 
   importWarnings.textContent = importSkippedRows > 0
-    ? `⚠️ Se omitieron ${importSkippedRows} fila(s) que no correspondían a datos válidos (encabezados o filas vacías).`
+    ? `Se omitieron ${importSkippedRows} fila(s) que no correspondían a datos válidos (encabezados o filas vacías).`
     : "";
 }
 
@@ -1133,13 +1134,13 @@ function renderDiffReport(caja, excelPages) {
   const issues = diffCajaPages(caja, excelPages);
 
   if (!issues.length) {
-    wrap.innerHTML = `<p style="color:#1d7b45; font-weight:650; margin-top:10px;">✅ Todo coincide exactamente entre el Excel y lo que ya está guardado para la Caja ${caja}.</p>`;
+    wrap.innerHTML = `<p class="diff-msg diff-ok">Todo coincide exactamente entre el Excel y lo que ya está guardado para la Caja ${caja}.</p>`;
     return;
   }
 
   const rows = issues.map(i => `<tr><td>Sobre ${escapeHtml(i.sobre)}</td><td>${escapeHtml(i.detail)}</td></tr>`).join("");
   wrap.innerHTML = `
-    <p style="color:#c0392b; font-weight:650; margin-top:10px;">⚠️ Se encontraron ${issues.length} diferencia(s) en la Caja ${caja}:</p>
+    <p class="diff-msg diff-warn">Se encontraron ${issues.length} diferencia(s) en la Caja ${caja}:</p>
     <table class="preview-table">
       <thead><tr><th>Página</th><th>Detalle</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -1160,7 +1161,7 @@ function initTheme() {
   const saved = localStorage.getItem("pangoa_theme");
   const theme = saved === "dark" ? "dark" : "light";
   document.documentElement.setAttribute("data-theme", theme);
-  themeToggleBtn.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeToggleBtn.textContent = theme === "dark" ? "Modo claro" : "Modo oscuro";
 }
 
 themeToggleBtn.addEventListener("click", () => {
@@ -1168,7 +1169,7 @@ themeToggleBtn.addEventListener("click", () => {
   const next = cur === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", next);
   localStorage.setItem("pangoa_theme", next);
-  themeToggleBtn.textContent = next === "dark" ? "☀️" : "🌙";
+  themeToggleBtn.textContent = next === "dark" ? "Modo claro" : "Modo oscuro";
 });
 
 initTheme();
@@ -1218,12 +1219,12 @@ function updateConnUI() {
     connState = newState;
     connCountdownEl.classList.remove("state-green", "state-yellow", "state-red");
     connCountdownEl.classList.add("state-" + newState);
-    connCountdownIconEl.textContent = newState === "green" ? "🟢" : newState === "yellow" ? "🟡" : "🔴";
+    connCountdownIconEl.textContent = "";
 
     if (newState === "yellow") {
-      showConnToast("⚠️ Queda poco tiempo de inactividad: el servidor podría ponerse en reposo pronto. Cualquier acción (guardar, cambiar de página) lo mantiene activo.", "yellow");
+      showConnToast("Queda poco tiempo de inactividad: el servidor podría ponerse en reposo pronto. Cualquier acción (guardar, cambiar de página) lo mantiene activo.", "yellow");
     } else if (newState === "red") {
-      showConnToast("🔴 El servidor está a punto de dormirse por inactividad. La próxima acción tardará unos segundos extra mientras se reactiva.", "red");
+      showConnToast("El servidor está a punto de dormirse por inactividad. La próxima acción tardará unos segundos extra mientras se reactiva.", "red");
     }
   }
 }
@@ -1240,4 +1241,20 @@ function resetConnCountdown() {
   connSecondsLeft = CONN_TOTAL_SECONDS;
   updateConnUI();
   startConnInterval();
+}
+// Menú "Archivo": se cierra al elegir una opción, al hacer clic fuera o con Escape.
+const fileMenu = document.getElementById("fileMenu");
+if (fileMenu) {
+  document.addEventListener("click", (e) => {
+    if (fileMenu.open && !fileMenu.contains(e.target)) fileMenu.open = false;
+  });
+  fileMenu.addEventListener("click", (e) => {
+    if (e.target.closest(".menu-item")) setTimeout(() => { fileMenu.open = false; }, 150);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && fileMenu.open) {
+      fileMenu.open = false;
+      fileMenu.querySelector("summary").focus();
+    }
+  });
 }
