@@ -19,19 +19,26 @@
       <h1>Generador de Documentos</h1>
       <p class="login-sub">Municipalidad Distrital de Pangoa</p>
 
-      <div id="loginError" class="login-error" hidden></div>
-      
+      <div id="loginError" class="login-error" role="alert" hidden></div>
+
       <label class="field">
         <span>Usuario</span>
-        <input type="text" id="loginUsername" autocomplete="username" placeholder="tu.usuario">
-    </label>
+        <input type="text" id="loginUsername" autocomplete="username" placeholder="Ej.: maria.lopez" autocapitalize="none" spellcheck="false" maxlength="40">
+      </label>
 
       <label class="field">
         <span>Contraseña</span>
-        <input type="password" id="loginPassword" autocomplete="current-password" placeholder="••••••••">
+        <input type="password" id="loginPassword" autocomplete="current-password" placeholder="Tu contraseña" maxlength="128">
+      </label>
+
+      <label class="show-pass">
+        <input type="checkbox" id="showPassword">
+        <span>Mostrar contraseña</span>
       </label>
 
       <button type="button" id="loginBtn" class="primary-btn">Ingresar</button>
+
+      <p class="login-note">Sistema de uso interno. Se guardan tu usuario y los sobres que registras. Si olvidaste tu contraseña, pide al administrador que la restablezca.</p>
     </div>
   </div>
 
