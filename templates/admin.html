@@ -4,27 +4,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Administrar usuarios - Generador Pangoa</title>
+  <meta name="color-scheme" content="light dark">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
 </head>
 <body data-min-password="{{ min_password }}">
-  <div class="aurora-bg" aria-hidden="true">
-    <span class="aurora-blob blob-a"></span>
-    <span class="aurora-blob blob-b"></span>
-    <span class="aurora-blob blob-c"></span>
-  </div>
-
-  <header class="topbar">
-    <div>
-      <h1>Administrar usuarios</h1>
-      <p>Generador de Documentos · Municipalidad de Pangoa</p>
+  <header class="nav container">
+    <div class="brand-block">
+      <span class="brand">Generador de sobres</span>
+      <span class="brand-sub">Municipalidad Distrital de Pangoa</span>
     </div>
-    <div class="actions">
+    <div class="nav-actions">
       <a href="/" class="secondary">← Volver al generador</a>
-      <button id="logoutBtn" class="danger" type="button">Cerrar sesión</button>
+      <button id="logoutBtn" class="secondary" type="button">Cerrar sesión</button>
     </div>
   </header>
 
-  <main class="admin-main">
+  <section class="page-head container">
+    <span class="eyebrow">Administración</span>
+    <h1 class="heading-lg">Gestiona los <em>usuarios</em></h1>
+    <p class="lead">Crea cuentas, restablece contraseñas y elimina accesos. Solo los administradores ven esta página.</p>
+  </section>
+
+  <main class="admin-main container">
     <section class="card">
       <h2>Crear nuevo usuario</h2>
       <div id="createError" class="error-box" role="alert" hidden></div>
