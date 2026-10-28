@@ -76,9 +76,11 @@ button:hover, a.secondary:hover { transform: translateY(-1px); }
 }
 .card h2 { margin: 0 0 16px; font-size: 17px; }
 
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: end; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.form-row #createUserBtn { align-self: end; }
 .form-row label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 650; color: var(--text-muted); }
-.form-row input[type="email"], .form-row input[type="password"] {
+.form-row input[type="text"], .form-row input[type="email"], .form-row input[type="password"], .modal-box input[type="password"], .modal-box input[type="text"] {
+  width: 100%;
   border: 1px solid var(--input-border); border-radius: 10px; padding: 10px 11px; font: inherit;
   background: rgba(255,255,255,.6); color: var(--text); outline: none;
 }
@@ -115,3 +117,47 @@ table.users-table th, table.users-table td { border-bottom: 1px solid var(--glas
   .form-row { grid-template-columns: 1fr; }
   .topbar { flex-direction: column; align-items: stretch; }
 }
+/* ---------- Auditoría: ayudas, estados y modales ---------- */
+button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+:focus-visible { outline: 2px solid var(--accent-a); outline-offset: 2px; }
+input:focus-visible { outline: none; }
+
+.field-hint { font-weight: 500; font-size: 12px; color: var(--text-muted); }
+.field-hint.is-error { color: var(--danger-text); }
+
+.password-wrap { position: relative; display: block; }
+.password-wrap input[type] { padding-right: 84px; }
+.toggle-pass {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  background: none; border: 0; padding: 6px 10px; border-radius: 8px;
+  font-size: 12px; font-weight: 650; color: var(--accent-a); cursor: pointer;
+}
+.toggle-pass:hover { transform: translateY(-50%); background: rgba(90,125,255,.12); }
+
+.pw-checklist { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-weight: 500; font-size: 12px; color: var(--text-muted); }
+.pw-checklist li::before { content: "○ "; }
+.pw-checklist li.ok { color: #1d7b45; }
+.pw-checklist li.ok::before { content: "✓ "; }
+.pw-checklist li.bad { color: var(--danger-text); }
+.pw-checklist li.bad::before { content: "✕ "; }
+
+.modal-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 650; color: var(--text-muted); margin-bottom: 14px; }
+.modal-box .error-box { margin-bottom: 12px; }
+.modal-box p { font-weight: 600; }
+
+.row-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.row-actions button { padding: 6px 10px; font-size: 12px; }
+.badge-you { margin-left: 6px; font-size: 11px; color: var(--text-muted); }
+
+.admin-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  max-width: min(520px, calc(100vw - 32px)); padding: 12px 16px; border-radius: 14px;
+  font-size: 13.5px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.2); z-index: 300;
+  background: var(--glass-bg-strong); border: 1px solid var(--glass-border); color: var(--text);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+.admin-toast[hidden] { display: none; }
+.admin-toast.state-success { color: #1d7b45; }
+.admin-toast.state-error { color: var(--danger-text); }
+
+@media (max-width: 700px) { .users-table { display: block; overflow-x: auto; } }
