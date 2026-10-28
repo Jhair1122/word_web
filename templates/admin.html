@@ -6,7 +6,7 @@
   <title>Administrar usuarios - Generador Pangoa</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
 </head>
-<body>
+<body data-min-password="{{ min_password }}">
   <div class="aurora-bg" aria-hidden="true">
     <span class="aurora-blob blob-a"></span>
     <span class="aurora-blob blob-b"></span>
@@ -27,19 +27,24 @@
   <main class="admin-main">
     <section class="card">
       <h2>Crear nuevo usuario</h2>
-      <div id="createError" class="error-box" hidden></div>
+      <div id="createError" class="error-box" role="alert" hidden></div>
       <div class="form-row">
         <label>Usuario
-          <input type="text" id="newUsername" placeholder="nombre.usuario">
+          <input type="text" id="newUsername" placeholder="Ej.: maria.lopez" autocomplete="off" maxlength="40" spellcheck="false">
+          <span id="usernameHint" class="field-hint">3 a 40 caracteres: letras, números, punto, guion o guion bajo.</span>
         </label>
         <label>Contraseña
-          <input type="password" id="newPassword" placeholder="Mínimo 6 caracteres">
+          <span class="password-wrap">
+            <input type="password" id="newPassword" placeholder="Una frase larga, con espacios" autocomplete="new-password" maxlength="128">
+            <button type="button" class="toggle-pass" data-target="newPassword" aria-label="Mostrar u ocultar la contraseña">Mostrar</button>
+          </span>
+          <ul id="pwChecklist" class="pw-checklist" aria-live="polite"></ul>
         </label>
         <label class="checkbox-label">
           <input type="checkbox" id="newIsAdmin">
           <span>Es administrador</span>
         </label>
-        <button id="createUserBtn" class="primary" type="button">+ Crear usuario</button>
+        <button id="createUserBtn" class="primary" type="button">Crear usuario</button>
       </div>
     </section>
 
@@ -52,11 +57,29 @@
   </main>
 
   <div id="confirmDeleteModal" class="modal-overlay" hidden>
-    <div class="modal-box">
+    <div class="modal-box" role="alertdialog" aria-modal="true" aria-labelledby="confirmDeleteMessage">
       <p id="confirmDeleteMessage"></p>
       <div class="modal-actions">
         <button type="button" id="confirmDeleteCancel" class="secondary">Cancelar</button>
-        <button type="button" id="confirmDeleteOk" class="danger">Eliminar</button>
+        <button type="button" id="confirmDeleteOk" class="danger">Eliminar usuario</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="resetModal" class="modal-overlay" hidden>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+      <p id="resetTitle"></p>
+      <label class="modal-field">Nueva contraseña
+        <span class="password-wrap">
+          <input type="password" id="resetPassword" autocomplete="new-password" maxlength="128">
+          <button type="button" class="toggle-pass" data-target="resetPassword" aria-label="Mostrar u ocultar la contraseña">Mostrar</button>
+        </span>
+        <ul id="resetChecklist" class="pw-checklist" aria-live="polite"></ul>
+      </label>
+      <div id="resetError" class="error-box" role="alert" hidden></div>
+      <div class="modal-actions">
+        <button type="button" id="resetCancel" class="secondary">Cancelar</button>
+        <button type="button" id="resetOk" class="primary">Guardar contraseña</button>
       </div>
     </div>
   </div>
