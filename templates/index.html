@@ -4,47 +4,56 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Generador de sobres - Municipalidad Distrital de Pangoa</title>
+  <meta name="color-scheme" content="light dark">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <div class="aurora-bg" aria-hidden="true">
-    <span class="aurora-blob blob-a"></span>
-    <span class="aurora-blob blob-b"></span>
-    <span class="aurora-blob blob-c"></span>
+<header class="nav container">
+  <div class="brand-block">
+    <span class="brand">Generador de sobres</span>
+    <span class="brand-sub">Municipalidad Distrital de Pangoa</span>
   </div>
-<header class="topbar">
-  <div>
-    <h1>Generador de documentos Word</h1>
-    <p>Municipalidad Distrital de Pangoa · Plantilla original</p>
-  </div>
-  <div class="actions">
-    <button id="themeToggleBtn" class="secondary" type="button" title="Cambiar tema" aria-label="Cambiar entre tema claro y oscuro">🌙</button>
-    <a href="/admin" id="adminLink" class="secondary admin-link" hidden>👤 Admin</a>
-    <button id="importExcelBtn" class="secondary" type="button">📥 Importar desde Excel</button>
-    <input type="file" id="excelFileInput" accept=".xlsx,.xls" hidden>
-    <button id="saveJsonBtn" class="secondary">Guardar respaldo</button>
-    <label class="secondary file-btn">Cargar respaldo
-      <input id="loadJsonInput" type="file" accept=".json" hidden>
-    </label>
-    <button id="downloadBtn" class="primary">Descargar Word</button>
-    <button id="logoutBtn" class="danger" type="button">Cerrar sesión</button>
+  <div class="nav-actions">
+    <details class="menu" id="fileMenu">
+      <summary>Archivo</summary>
+      <div class="menu-panel">
+        <button id="importExcelBtn" class="menu-item" type="button">Importar desde Excel</button>
+        <input type="file" id="excelFileInput" accept=".xlsx,.xls" hidden>
+        <button id="saveJsonBtn" class="menu-item" type="button">Guardar respaldo</button>
+        <label class="menu-item file-btn">Cargar respaldo
+          <input id="loadJsonInput" type="file" accept=".json" hidden>
+        </label>
+      </div>
+    </details>
+    <a href="/admin" id="adminLink" class="secondary admin-link" hidden>Administrar usuarios</a>
+    <button id="themeToggleBtn" class="secondary" type="button" title="Cambiar tema" aria-label="Cambiar entre tema claro y oscuro">Modo oscuro</button>
+    <button id="logoutBtn" class="secondary" type="button">Cerrar sesión</button>
+    <button id="downloadBtn" class="primary" type="button">Descargar Word</button>
   </div>
 </header>
 
-<main class="layout">
+<section class="page-head container">
+  <span class="eyebrow">Plantilla original · Word</span>
+  <h1 class="heading-lg">Arma tus sobres y <em>descarga el Word</em></h1>
+  <p class="lead">Completa los datos de cada página, importa una caja desde Excel o carga un respaldo. Todo se guarda solo.</p>
+</section>
+
+<main class="layout container">
   <section class="card form-card">
     <div class="card-header">
       <div>
         <span class="eyebrow">PÁGINA <span id="currentNumber">1</span> DE <span id="totalPages">1</span></span>
         <h2>Datos del sobre</h2>
       </div>
-            <div class="status-group">
+      <div class="status-group">
         <span id="status" class="status" role="status" aria-live="polite">
-          <span id="statusIconEl">⏳</span>
+          <span id="statusIconEl"></span>
           <span id="statusTextEl">Conectando...</span>
         </span>
         <span id="connCountdown" class="conn-countdown state-green">
-          <span id="connCountdownIcon">🟢</span>
+          <span id="connCountdownIcon"></span>
           <span id="connCountdownText">Conexión: 15:00</span>
         </span>
       </div>
@@ -78,7 +87,7 @@
         </label>
       </div>
 
-      <div class="grid" style="grid-column: 1 / -1; margin-top: 14px;">
+      <div class="grid grid--dates">
         <label>Fecha inicio
           <input type="date" name="fecha_inicio">
         </label>
@@ -101,8 +110,8 @@
       </section>
 
       <div class="form-actions-secondary">
-        <button type="button" id="duplicatePageBtn" class="secondary">📄 Duplicar página</button>
-        <button type="button" id="deletePageBtn" class="danger">🗑 Eliminar página</button>
+        <button type="button" id="duplicatePageBtn" class="secondary">Duplicar página</button>
+        <button type="button" id="deletePageBtn" class="danger">Eliminar página</button>
       </div>
 
       <div class="form-actions">
@@ -121,25 +130,25 @@
       <span id="pageCount" class="count">1</span>
     </div>
 
-    <input type="search" id="pageSearch" class="search-input" placeholder="🔍 Buscar sobre o sub serie (ej.: 15)" aria-label="Buscar páginas por N° de sobre o sub serie" autocomplete="off">
-    <p class="help-text drag-hint">Busca por N° de sobre o Sub serie (revisa todos los cuadros de la página). Arrastra una página en la lista para reordenarla (deshabilitado mientras buscas).</p>
+    <input type="search" id="pageSearch" class="search-input" placeholder="Buscar sobre o sub serie (ej.: 15)" aria-label="Buscar páginas por N° de sobre o sub serie" autocomplete="off">
+    <p class="help-text drag-hint">Busca por N° de sobre o Sub serie (revisa todos los cuadros). Arrastra una página para reordenarla; al buscar no se puede arrastrar.</p>
 
     <div id="pagesList" class="pages-list"></div>
 
     <button id="newPageBtn" class="secondary full">+ Nueva página</button>
-    <button id="clearAllBtn" class="danger full">🗑 Borrar todas las páginas</button>
+    <button id="clearAllBtn" class="danger full">Borrar todas las páginas</button>
 
     <div class="download-box">
       <strong>¿Terminaste o quieres pausar?</strong>
       <p>Puedes descargar el Word completo o guardar un respaldo para continuar después.</p>
-      <button id="previewBtn" class="secondary full">👁 Vista previa de todas las páginas</button>
+      <button id="previewBtn" class="secondary full">Vista previa de todas las páginas</button>
       <button id="downloadBtn2" class="primary full">Descargar documento Word</button>
     </div>
   </aside>
 </main>
 
 <footer>
-  Los datos se guardan en la base de datos (Supabase). Cambios visibles al instante en cualquier dispositivo.
+  Tus datos se guardan en la base de datos (Supabase) y puedes continuar desde cualquier dispositivo.
 </footer>
 
 <div id="confirmModal" class="modal-overlay" hidden>
@@ -179,15 +188,15 @@
       <label>Selecciona la caja a importar
         <select id="importCajaSelect"></select>
       </label>
-      <p id="importSummary" class="help-text" style="margin-top:10px;"></p>
-      <div id="importPreviewWrap" style="max-height:280px; overflow:auto; margin-top:10px;"></div>
-      <p id="importWarnings" class="help-text" style="color:#c0392b;"></p>
+      <p id="importSummary" class="help-text"></p>
+      <div id="importPreviewWrap"></div>
+      <p id="importWarnings" class="help-text import-warnings"></p>
 
-      <button type="button" id="importVerifyBtn" class="secondary full">🔍 Verificar diferencias con lo actual</button>
-      <div id="importDiffWrap" style="margin-top:12px;"></div>
+      <button type="button" id="importVerifyBtn" class="secondary full">Verificar diferencias con lo actual</button>
+      <div id="importDiffWrap"></div>
 
-      <div class="modal-actions" style="justify-content: space-between; margin-top: 18px;">
-        <button type="button" id="importAppendBtn" class="secondary">+ Agregar al final del documento actual</button>
+      <div class="modal-actions modal-actions--split">
+        <button type="button" id="importAppendBtn" class="secondary">Agregar al final del documento</button>
         <button type="button" id="importReplaceBtn" class="danger">Reemplazar todas las páginas</button>
       </div>
     </div>
