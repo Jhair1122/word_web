@@ -1,4 +1,4 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/+esm";
 import { setupAuthCookieSync } from "./auth-sync.js";
 
 const SUPABASE_URL = "https://wojinjaczmwlojihoebp.supabase.co";
@@ -10,6 +10,7 @@ const loginUsername = document.getElementById("loginUsername");
 const loginPassword = document.getElementById("loginPassword");
 const loginBtn = document.getElementById("loginBtn");
 const loginError = document.getElementById("loginError");
+const showPassword = document.getElementById("showPassword");
 
 async function redirectIfAlreadyLogged() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -17,13 +18,24 @@ async function redirectIfAlreadyLogged() {
 }
 redirectIfAlreadyLogged();
 
+function showError(message) {
+  loginError.textContent = message;
+  loginError.hidden = false;
+}
+
+function resetButton() {
+  loginBtn.disabled = false;
+  loginBtn.textContent = "Ingresar";
+}
+
 async function doLogin() {
+  if (loginBtn.disabled) return; // evita enviar dos veces
   loginError.hidden = true;
   const username = loginUsername.value.trim();
   const password = loginPassword.value;
   if (!username || !password) {
-    loginError.textContent = "Ingresa tu usuario y contraseña.";
-    loginError.hidden = false;
+    showError("Ingresa tu usuario y contraseña.");
+    (username ? loginPassword : loginUsername).focus();
     return;
   }
   loginBtn.disabled = true;
@@ -36,10 +48,9 @@ async function doLogin() {
     });
     const data = await response.json();
     if (!response.ok) {
-      loginError.textContent = data.error || "Usuario o contraseña incorrectos.";
-      loginError.hidden = false;
-      loginBtn.disabled = false;
-      loginBtn.textContent = "Ingresar";
+      // 429: demasiados intentos; el servidor indica cuánto esperar
+      showError(data.error || "Usuario o contraseña incorrectos.");
+      resetButton();
       return;
     }
     const { error } = await supabase.auth.setSession({
@@ -47,21 +58,20 @@ async function doLogin() {
       refresh_token: data.refresh_token
     });
     if (error) {
-      loginError.textContent = "No se pudo iniciar sesión.";
-      loginError.hidden = false;
-      loginBtn.disabled = false;
-      loginBtn.textContent = "Ingresar";
+      showError("No se pudo iniciar sesión.");
+      resetButton();
       return;
     }
     window.location.href = "/";
   } catch (e) {
-    loginError.textContent = "Error de conexión. Intenta de nuevo.";
-    loginError.hidden = false;
-    loginBtn.disabled = false;
-    loginBtn.textContent = "Ingresar";
+    showError("Error de conexión. Si el servidor estaba en reposo, espera unos segundos e intenta de nuevo.");
+    resetButton();
   }
 }
 
 loginBtn.addEventListener("click", doLogin);
 loginPassword.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 loginUsername.addEventListener("keydown", (e) => { if (e.key === "Enter") loginPassword.focus(); });
+showPassword.addEventListener("change", () => {
+  loginPassword.type = showPassword.checked ? "text" : "password";
+});
