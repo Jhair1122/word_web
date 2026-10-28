@@ -1,8 +1,15 @@
 import os
 import re
+import time
+import uuid
+import threading
+from collections import defaultdict, deque
 from functools import wraps
 from flask import Flask, render_template, request, send_file, jsonify, g, redirect
-from supabase import create_client, Client
+from supabase import create_client
+from postgrest.exceptions import APIError
+from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
 from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -19,23 +26,170 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
+# ---------------------------------------------------------------------------
+# Configuración de seguridad
+# ---------------------------------------------------------------------------
+# Cantidad de proxies de confianza delante de la app (Render = 1 por defecto).
+# Si ves que todas las IP en los logs son iguales, ajusta TRUSTED_PROXIES.
+TRUSTED_PROXIES = int(os.environ.get("TRUSTED_PROXIES", "1"))
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=TRUSTED_PROXIES, x_proto=1, x_host=1)
 
-@app.errorhandler(404)
-def not_found(e):
-    return jsonify({"error": "Ruta no encontrada."}), 404
+# Tamaño máximo de cualquier petición (los respaldos JSON grandes caben de sobra).
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+
+# Política de contraseñas (NIST SP 800-63B-4): 15 si la contraseña es el único factor.
+# Se puede bajar con la variable de entorno MIN_PASSWORD_LENGTH si la institución lo requiere.
+MIN_PASSWORD_LENGTH = int(os.environ.get("MIN_PASSWORD_LENGTH", "15"))
+MAX_PASSWORD_LENGTH = 128
+
+# Límites de datos de las páginas
+MAX_PAGES = 500
+MAX_ITEMS_PER_PAGE = 200
+MAX_SHORT_FIELD = 200
+MAX_DESCRIPTION = 3000
+
+# "enforce" aplica la CSP; "report-only" solo la reporta en la consola del navegador.
+CSP_MODE = os.environ.get("CSP_MODE", "report-only").lower()
 
 
-@app.errorhandler(405)
-def method_not_allowed(e):
-    return jsonify({"error": "Método no permitido."}), 405
+# ---------------------------------------------------------------------------
+# Limitador de solicitudes en memoria (por proceso)
+# ---------------------------------------------------------------------------
+class RateLimiter:
+    """Ventana deslizante simple. Es por proceso: si gunicorn usa varios workers,
+    cada uno cuenta por separado (usa --workers 1 o un almacén compartido como Redis)."""
+
+    def __init__(self):
+        self._hits = defaultdict(deque)
+        self._lock = threading.Lock()
+
+    def _prune(self, q, now, window):
+        while q and now - q[0] >= window:
+            q.popleft()
+
+    def blocked(self, key, limit, window):
+        """Devuelve 0 si se puede continuar o los segundos que faltan para reintentar."""
+        now = time.monotonic()
+        with self._lock:
+            q = self._hits.get(key)
+            if not q:
+                return 0
+            self._prune(q, now, window)
+            if not q:
+                self._hits.pop(key, None)
+                return 0
+            if len(q) >= limit:
+                return int(window - (now - q[0])) + 1
+            return 0
+
+    def hit(self, key):
+        with self._lock:
+            if len(self._hits) > 20000:
+                self._hits = defaultdict(deque, {k: v for k, v in self._hits.items() if v})
+            self._hits[key].append(time.monotonic())
+
+    def reset(self, key):
+        with self._lock:
+            self._hits.pop(key, None)
+
+
+limiter = RateLimiter()
+
+
+def too_many(retry_after):
+    if retry_after >= 60:
+        minutes = (retry_after + 59) // 60
+        wait_text = f"{minutes} minuto" + ("s" if minutes != 1 else "")
+    else:
+        wait_text = f"{retry_after} segundos"
+    resp = jsonify({"error": f"Demasiados intentos. Intenta de nuevo en {wait_text}."})
+    resp.status_code = 429
+    resp.headers["Retry-After"] = str(retry_after)
+    return resp
+
+
+def rate_limit(scope, limit, window):
+    """Limita por usuario autenticado (g.user_id) o por admin (g.admin_id). Cuenta cada solicitud."""
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            ident = getattr(g, "user_id", None) or getattr(g, "admin_id", None) or request.remote_addr
+            key = f"{scope}:{ident}"
+            wait = limiter.blocked(key, limit, window)
+            if wait:
+                return too_many(wait)
+            limiter.hit(key)
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+# ---------------------------------------------------------------------------
+# Errores: siempre JSON, mensajes genéricos; el detalle va al log del servidor
+# ---------------------------------------------------------------------------
+HTTP_MESSAGES = {
+    400: "Solicitud inválida.",
+    401: "No autorizado.",
+    403: "No tienes permiso para esta acción.",
+    404: "Ruta no encontrada.",
+    405: "Método no permitido.",
+    413: "La solicitud es demasiado grande.",
+    415: "Tipo de contenido no soportado.",
+    429: "Demasiadas solicitudes. Intenta de nuevo en unos segundos.",
+}
+
+
+@app.errorhandler(HTTPException)
+def handle_http_error(e):
+    code = e.code or 500
+    return jsonify({"error": HTTP_MESSAGES.get(code, "Error en la solicitud.")}), code
 
 
 @app.errorhandler(Exception)
 def handle_unexpected_error(e):
     app.logger.exception("Error no manejado")
-    return jsonify({"error": f"Error interno: {e}"}), 500
+    return jsonify({"error": "Error interno del servidor."}), 500
 
 
+# ---------------------------------------------------------------------------
+# Cabeceras de seguridad
+# ---------------------------------------------------------------------------
+def build_csp():
+    supabase_origin = (SUPABASE_URL or "").rstrip("/")
+    ws_origin = supabase_origin.replace("https://", "wss://", 1) if supabase_origin else ""
+    connect = " ".join(x for x in ["'self'", supabase_origin, ws_origin] if x)
+    return "; ".join([
+        "default-src 'self'",
+        "script-src 'self' https://cdn.jsdelivr.net",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        f"connect-src {connect}",
+        "font-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ])
+
+
+@app.after_request
+def add_security_headers(resp):
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("Referrer-Policy", "same-origin")
+    resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    header = "Content-Security-Policy" if CSP_MODE == "enforce" else "Content-Security-Policy-Report-Only"
+    resp.headers.setdefault(header, build_csp())
+    if request.is_secure:
+        resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    if not request.path.startswith("/static/"):
+        resp.headers.setdefault("Cache-Control", "no-store")
+    return resp
+
+
+# ---------------------------------------------------------------------------
+# Autenticación y autorización
+# ---------------------------------------------------------------------------
 def require_auth(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -84,6 +238,7 @@ def require_admin(f):
             return jsonify({"error": "Se requieren permisos de administrador."}), 403
 
         g.service_client = service
+        g.admin_id = uid
         return f(*args, **kwargs)
     return wrapper
 
@@ -115,6 +270,98 @@ def is_request_from_admin_cookie():
 
     rows = prof_resp.data or []
     return bool(rows and rows[0].get("is_admin"))
+
+
+# ---------------------------------------------------------------------------
+# Validación de entradas
+# ---------------------------------------------------------------------------
+_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+PAGE_FIELDS = ("id", "caja", "cod_serie", "sobre", "codigo", "seccion",
+               "serie_doc", "fecha_inicio", "fecha_final", "anio")
+
+
+def _text(value, max_len):
+    """Convierte a texto, quita caracteres de control (rompen el XML del Word) y limita el largo."""
+    text = "" if value is None else str(value)
+    text = _CONTROL_CHARS.sub("", text)
+    if len(text) > max_len:
+        raise ValueError("Uno de los campos supera el largo permitido.")
+    return text
+
+
+def clean_pages(entries):
+    """Valida y limpia la lista de páginas recibida del cliente. Lanza ValueError si es inválida."""
+    if not isinstance(entries, list):
+        raise ValueError("Formato inválido.")
+    if len(entries) > MAX_PAGES:
+        raise ValueError(f"Máximo {MAX_PAGES} páginas por documento.")
+
+    cleaned = []
+    for raw in entries:
+        if not isinstance(raw, dict):
+            raise ValueError("Formato inválido.")
+        page = {field: _text(raw.get(field), MAX_SHORT_FIELD) for field in PAGE_FIELDS}
+
+        raw_items = raw.get("items")
+        if isinstance(raw_items, list) and raw_items:
+            if len(raw_items) > MAX_ITEMS_PER_PAGE:
+                raise ValueError(f"Máximo {MAX_ITEMS_PER_PAGE} cuadros por página.")
+            items = []
+            for it in raw_items:
+                if not isinstance(it, dict):
+                    raise ValueError("Formato inválido.")
+                items.append({
+                    "subserie": _text(it.get("subserie"), MAX_SHORT_FIELD),
+                    "descripcion": _text(it.get("descripcion"), MAX_DESCRIPTION),
+                    "folio": _text(it.get("folio"), MAX_SHORT_FIELD),
+                })
+        else:
+            # Formato antiguo: un solo cuadro con campos sueltos
+            items = [{
+                "subserie": _text(raw.get("subserie"), MAX_SHORT_FIELD),
+                "descripcion": _text(raw.get("descripcion"), MAX_DESCRIPTION),
+                "folio": _text(raw.get("folio"), MAX_SHORT_FIELD),
+            }]
+        page["items"] = items
+        cleaned.append(page)
+    return cleaned
+
+
+def safe_filename(name):
+    name = re.sub(r"[^\w .\-]", "", str(name or ""), flags=re.UNICODE).strip()[:100]
+    if not name:
+        name = "documento_pangoa"
+    if not name.lower().endswith(".docx"):
+        name += ".docx"
+    return name
+
+
+def ilike_exact(value):
+    """Escapa los comodines de LIKE para que ilike se comporte como igualdad sin distinguir mayúsculas."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+COMMON_PASSWORDS = {
+    "password", "password1", "contrasena", "contraseña", "123456789", "1234567890",
+    "12345678901234", "123456789012345", "qwertyuiop", "qwertyuiopasdf", "abcdefghijklmno",
+    "iloveyou", "administrador", "administrator", "municipalidad", "pangoa", "pangoa2024",
+    "pangoa2025", "pangoa2026", "bienvenido", "bienvenida", "letmein", "welcome",
+}
+
+
+def validate_password(password, username=""):
+    """Devuelve un mensaje de error o None si la contraseña es aceptable."""
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return f"La contraseña debe tener al menos {MIN_PASSWORD_LENGTH} caracteres. Puedes usar una frase con espacios."
+    if len(password) > MAX_PASSWORD_LENGTH:
+        return f"La contraseña no puede superar {MAX_PASSWORD_LENGTH} caracteres."
+    low = password.lower()
+    plain = re.sub(r"[^a-z0-9ñ]", "", low)
+    if low in COMMON_PASSWORDS or plain in COMMON_PASSWORDS or len(set(password)) <= 3:
+        return "Esa contraseña es demasiado común o predecible. Elige otra."
+    if username and len(username) >= 3 and username in low:
+        return "La contraseña no debe contener el nombre de usuario."
+    return None
 
 
 def set_cell_value(cell, value, bold=None):
@@ -344,6 +591,9 @@ def build_document(entries):
     return output
 
 
+# ---------------------------------------------------------------------------
+# Rutas
+# ---------------------------------------------------------------------------
 @app.get("/")
 def index():
     return render_template("index.html")
@@ -358,31 +608,32 @@ def login_page():
 def admin_page():
     if not is_request_from_admin_cookie():
         return redirect("/")
-    return render_template("admin.html")
+    return render_template("admin.html", min_password=MIN_PASSWORD_LENGTH)
 
 
 @app.post("/generar")
 @require_auth
+@rate_limit("generar", 10, 60)
 def generar():
     payload = request.get_json(silent=True) or {}
-    entries = payload.get("pages", [])
+    try:
+        entries = clean_pages(payload.get("pages", []))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
 
-    if not isinstance(entries, list) or not entries:
+    if not entries:
         return jsonify({"error": "Agrega al menos una página antes de descargar."}), 400
 
     try:
         document = build_document(entries)
-    except Exception as exc:
-        return jsonify({"error": f"No se pudo generar el Word: {exc}"}), 500
-
-    filename = payload.get("filename") or "documento_pangoa.docx"
-    if not filename.lower().endswith(".docx"):
-        filename += ".docx"
+    except Exception:
+        app.logger.exception("Error al generar el Word")
+        return jsonify({"error": "No se pudo generar el documento."}), 500
 
     return send_file(
         document,
         as_attachment=True,
-        download_name=filename,
+        download_name=safe_filename(payload.get("filename")),
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
 
@@ -396,56 +647,82 @@ def salud():
 @require_auth
 def obtener_paginas():
     try:
-        response = g.supabase.table("pages").select("*").order("orden").execute()
+        response = (
+            g.supabase.table("pages").select("data")
+            .eq("user_id", g.user_id).order("orden").execute()
+        )
         return jsonify({"pages": [row["data"] for row in response.data]})
-    except Exception as exc:
-        return jsonify({"error": f"No se pudieron obtener las páginas: {exc}"}), 500
+    except Exception:
+        app.logger.exception("Error al obtener las páginas")
+        return jsonify({"error": "No se pudieron obtener las páginas."}), 500
+
+
+def replace_user_pages(client, user_id, entries):
+    """Reemplaza todas las páginas del usuario. Usa la función SQL atómica si existe
+    (ver supabase_seguridad.sql); si no, cae al método anterior pero acotado al usuario."""
+    try:
+        client.rpc("replace_user_pages", {"p_pages": entries}).execute()
+        return
+    except APIError as exc:
+        if getattr(exc, "code", None) not in ("PGRST202", "42883"):
+            raise
+        app.logger.warning("replace_user_pages no existe en Supabase; usando guardado no atómico")
+
+    client.table("pages").delete().eq("user_id", user_id).execute()
+    if entries:
+        rows = [{"orden": i, "data": entry, "user_id": user_id} for i, entry in enumerate(entries)]
+        client.table("pages").insert(rows).execute()
 
 
 @app.post("/paginas")
 @require_auth
+@rate_limit("paginas", 300, 60)
 def guardar_paginas():
-    payload = request.get_json(silent=True) or {}
-    entries = payload.get("pages", [])
-
-    if not isinstance(entries, list):
+    payload = request.get_json(silent=True)
+    # Sin una lista "pages" explícita no se guarda nada: evita borrar todo por un cuerpo vacío o mal formado.
+    if not isinstance(payload, dict) or not isinstance(payload.get("pages"), list):
         return jsonify({"error": "Formato inválido."}), 400
+    try:
+        entries = clean_pages(payload["pages"])
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
 
     try:
-        g.supabase.table("pages").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
-
-        if entries:
-            rows = [{"orden": i, "data": entry, "user_id": g.user_id} for i, entry in enumerate(entries)]
-            g.supabase.table("pages").insert(rows).execute()
-
+        replace_user_pages(g.supabase, g.user_id, entries)
         return jsonify({"ok": True})
-    except Exception as exc:
-        return jsonify({"error": f"No se pudieron guardar las páginas: {exc}"}), 500
+    except Exception:
+        app.logger.exception("Error al guardar las páginas")
+        return jsonify({"error": "No se pudieron guardar las páginas."}), 500
 
 
 @app.get("/admin/usuarios")
 @require_admin
 def listar_usuarios():
-    response = g.service_client.table("profiles").select("*").order("created_at").execute()
+    response = (
+        g.service_client.table("profiles")
+        .select("id,username,is_admin,created_at").order("created_at").execute()
+    )
     return jsonify({"usuarios": response.data})
 
 
 @app.post("/admin/usuarios")
 @require_admin
+@rate_limit("crear-usuario", 20, 600)
 def crear_usuario():
     payload = request.get_json(silent=True) or {}
-    username_raw = (payload.get("username") or "").strip()
-    password = payload.get("password") or ""
+    username_raw = str(payload.get("username") or "").strip()
+    password = str(payload.get("password") or "")
     is_admin = bool(payload.get("is_admin", False))
 
-    if not username_raw or len(password) < 6:
-        return jsonify({"error": "Usuario y contraseña (mínimo 6 caracteres) son obligatorios."}), 400
-
     username = re.sub(r"[^a-zA-Z0-9_.-]", "", username_raw).lower()
-    if not username:
-        return jsonify({"error": "El nombre de usuario contiene caracteres no válidos."}), 400
+    if not 3 <= len(username) <= 40:
+        return jsonify({"error": "El usuario debe tener entre 3 y 40 caracteres (letras, números, punto, guion o guion bajo)."}), 400
 
-    existing = g.service_client.table("profiles").select("id").ilike("username", username).execute()
+    problem = validate_password(password, username)
+    if problem:
+        return jsonify({"error": problem}), 400
+
+    existing = g.service_client.table("profiles").select("id").ilike("username", ilike_exact(username)).execute()
     if existing.data:
         return jsonify({"error": "Ese nombre de usuario ya existe."}), 400
 
@@ -458,57 +735,144 @@ def crear_usuario():
             "email_confirm": True,
             "user_metadata": {"username": username}
         })
-        new_id = result.user.id
+    except Exception:
+        app.logger.exception("Error al crear el usuario en Supabase Auth")
+        return jsonify({"error": "No se pudo crear el usuario."}), 500
+
+    new_id = result.user.id
+    try:
         g.service_client.table("profiles").update({
             "is_admin": is_admin,
             "username": username
         }).eq("id", new_id).execute()
-        return jsonify({"ok": True})
-    except Exception as exc:
-        return jsonify({"error": f"No se pudo crear el usuario: {exc}"}), 500
+    except Exception:
+        app.logger.exception("Error al completar el perfil; se revierte la creación")
+        try:
+            g.service_client.auth.admin.delete_user(new_id)
+        except Exception:
+            app.logger.exception("No se pudo revertir el usuario %s", new_id)
+        return jsonify({"error": "No se pudo crear el usuario."}), 500
+
+    app.logger.info("ADMIN %s creó al usuario %s (admin=%s)", g.admin_id, username, is_admin)
+    return jsonify({"ok": True})
 
 
 @app.post("/auth/login")
 def login_con_usuario():
     payload = request.get_json(silent=True) or {}
-    username = re.sub(r"[^a-zA-Z0-9_.-]", "", (payload.get("username") or "").strip()).lower()
-    password = payload.get("password") or ""
+    username = re.sub(r"[^a-zA-Z0-9_.-]", "", str(payload.get("username") or "").strip()).lower()
+    password = str(payload.get("password") or "")
 
     if not username or not password:
         return jsonify({"error": "Usuario y contraseña son obligatorios."}), 400
+    if len(username) > 40 or len(password) > MAX_PASSWORD_LENGTH:
+        return jsonify({"error": "Usuario o contraseña incorrectos."}), 401
+
+    ip = request.remote_addr or "?"
+    k_pair = f"login-pair:{username}:{ip}"   # 5 fallos por usuario desde la misma IP
+    k_user = f"login-user:{username}"        # 25 fallos por usuario desde cualquier IP
+    k_ip = f"login-ip:{ip}"                  # 60 fallos por IP (alto: varias personas pueden compartir IP)
+    wait = max(
+        limiter.blocked(k_pair, 5, 900),
+        limiter.blocked(k_user, 25, 900),
+        limiter.blocked(k_ip, 60, 900),
+    )
+    if wait:
+        app.logger.warning("Login bloqueado por demasiados intentos: usuario=%s ip=%s", username, ip)
+        return too_many(wait)
+
+    def fail():
+        for key in (k_pair, k_user, k_ip):
+            limiter.hit(key)
+        return jsonify({"error": "Usuario o contraseña incorrectos."}), 401
 
     service = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    prof = service.table("profiles").select("email").ilike("username", username).execute()
+    prof = service.table("profiles").select("email").ilike("username", ilike_exact(username)).execute()
     rows = prof.data or []
-    if not rows:
-        return jsonify({"error": "Usuario o contraseña incorrectos."}), 401
-    email = rows[0]["email"]
 
     anon_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+    if not rows:
+        # Intento ficticio para que la respuesta tarde parecido y no delate qué usuarios existen
+        try:
+            anon_client.auth.sign_in_with_password({"email": "no-existe@pangoa.local", "password": password})
+        except Exception:
+            pass
+        return fail()
+
     try:
-        auth_resp = anon_client.auth.sign_in_with_password({"email": email, "password": password})
+        auth_resp = anon_client.auth.sign_in_with_password({"email": rows[0]["email"], "password": password})
     except Exception:
-        return jsonify({"error": "Usuario o contraseña incorrectos."}), 401
+        return fail()
 
     session = auth_resp.session
     if not session:
-        return jsonify({"error": "Usuario o contraseña incorrectos."}), 401
+        return fail()
 
+    limiter.reset(k_pair)
+    limiter.reset(k_user)
     return jsonify({
         "access_token": session.access_token,
         "refresh_token": session.refresh_token
     })
 
 
+@app.post("/admin/usuarios/<user_id>/password")
+@require_admin
+@rate_limit("reset-password", 20, 600)
+def restablecer_password(user_id):
+    try:
+        uid = str(uuid.UUID(user_id))
+    except ValueError:
+        return jsonify({"error": "Identificador inválido."}), 400
+
+    payload = request.get_json(silent=True) or {}
+    password = str(payload.get("password") or "")
+
+    target = g.service_client.table("profiles").select("username").eq("id", uid).execute()
+    if not target.data:
+        return jsonify({"error": "Usuario no encontrado."}), 404
+
+    problem = validate_password(password, str(target.data[0].get("username") or ""))
+    if problem:
+        return jsonify({"error": problem}), 400
+
+    try:
+        g.service_client.auth.admin.update_user_by_id(uid, {"password": password})
+    except Exception:
+        app.logger.exception("Error al restablecer la contraseña")
+        return jsonify({"error": "No se pudo restablecer la contraseña."}), 500
+
+    app.logger.info("ADMIN %s restableció la contraseña del usuario %s", g.admin_id, uid)
+    return jsonify({"ok": True})
+
+
 @app.delete("/admin/usuarios/<user_id>")
 @require_admin
+@rate_limit("eliminar-usuario", 20, 600)
 def eliminar_usuario(user_id):
     try:
-        g.service_client.auth.admin.delete_user(user_id)
-        return jsonify({"ok": True})
-    except Exception as exc:
-        return jsonify({"error": f"No se pudo eliminar: {exc}"}), 500
+        uid = str(uuid.UUID(user_id))
+    except ValueError:
+        return jsonify({"error": "Identificador inválido."}), 400
+
+    if uid == str(g.admin_id):
+        return jsonify({"error": "No puedes eliminar tu propia cuenta."}), 400
+
+    target = g.service_client.table("profiles").select("is_admin").eq("id", uid).execute()
+    if target.data and target.data[0].get("is_admin"):
+        admins = g.service_client.table("profiles").select("id").eq("is_admin", True).execute()
+        if len(admins.data or []) <= 1:
+            return jsonify({"error": "No se puede eliminar al último administrador."}), 400
+
+    try:
+        g.service_client.auth.admin.delete_user(uid)
+    except Exception:
+        app.logger.exception("Error al eliminar el usuario")
+        return jsonify({"error": "No se pudo eliminar el usuario."}), 500
+
+    app.logger.info("ADMIN %s eliminó al usuario %s", g.admin_id, uid)
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=os.environ.get("FLASK_DEBUG") == "1")
