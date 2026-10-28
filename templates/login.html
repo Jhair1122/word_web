@@ -4,20 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iniciar sesión - Generador Pangoa</title>
+  <meta name="color-scheme" content="light dark">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
 </head>
 <body>
-  <div class="aurora-bg" aria-hidden="true">
-    <span class="aurora-blob blob-a"></span>
-    <span class="aurora-blob blob-b"></span>
-    <span class="aurora-blob blob-c"></span>
-  </div>
+  <main class="login-page container">
+    <section class="login-intro">
+      <span class="brand">Generador de sobres</span>
+      <h1 class="heading-lg">Tus sobres de archivo, <em>listos en Word</em></h1>
+      <p class="lead">Municipalidad Distrital de Pangoa. Registra los datos, importa desde Excel y descarga el documento con la plantilla original.</p>
+    </section>
 
-  <div class="login-wrap">
-    <div class="login-card">
-      <div class="login-icon">🔐</div>
-      <h1>Generador de Documentos</h1>
-      <p class="login-sub">Municipalidad Distrital de Pangoa</p>
+    <section class="login-card" aria-labelledby="loginTitle">
+      <h2 id="loginTitle">Iniciar sesión</h2>
+      <p class="login-sub">Ingresa con el usuario que te dio el administrador.</p>
 
       <div id="loginError" class="login-error" role="alert" hidden></div>
 
@@ -39,8 +41,8 @@
       <button type="button" id="loginBtn" class="primary-btn">Ingresar</button>
 
       <p class="login-note">Sistema de uso interno. Se guardan tu usuario y los sobres que registras. Si olvidaste tu contraseña, pide al administrador que la restablezca.</p>
-    </div>
-  </div>
+    </section>
+  </main>
 
   <script type="module" src="{{ url_for('static', filename='login.js') }}"></script>
 </body>
