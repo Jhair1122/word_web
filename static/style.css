@@ -18,7 +18,6 @@
 .status-group { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .status, .conn-countdown { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--r-pill); background: var(--field); font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; letter-spacing: -0.01em; }
 .status::before, .conn-countdown::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
-.status #statusIconEl, .conn-countdown #connCountdownIcon { display: none; }
 .status[data-state="saved"] { color: var(--ink); }
 .status[data-state="saved"]::before { background: var(--g-leaf); box-shadow: 0 0 0 4px color-mix(in srgb, var(--g-leaf) 25%, transparent); }
 .status[data-state="saving"]::before, .status[data-state="loading"]::before { background: var(--g-sun); animation: pulse 1s ease-in-out infinite; }
@@ -87,7 +86,8 @@
 
 /* ----- Modales de importación / vista previa ----- */
 #previewTableWrap, #importPreviewWrap { max-height: 55vh; overflow: auto; border-radius: 14px; background: var(--sheet); border: 1px solid var(--line-soft); }
-#importPreviewWrap { max-height: 280px; margin-top: 12px; }
+#importPreviewWrap { max-height: 220px; margin-top: 12px; }
+.preview-table td:first-child, .preview-table td:nth-child(2) { white-space: nowrap; }
 #importDiffWrap { margin-top: 14px; }
 #importModal label { margin-top: 6px; }
 #importModal select { cursor: pointer; }
