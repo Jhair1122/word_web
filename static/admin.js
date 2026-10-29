@@ -210,7 +210,24 @@ async function cargarUsuarios() {
   }
 }
 
+function updateStats(usuarios) {
+  const fx = window.PangoaFX;
+  const total = usuarios.length;
+  const admins = usuarios.filter(u => u.is_admin).length;
+  const set = (id, n, one, many) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (fx) fx.countTo(el, n); else el.textContent = String(n);
+    const label = el.parentElement && el.parentElement.querySelector("span");
+    if (label) label.textContent = n === 1 ? one : many;
+  };
+  set("statTotal", total, "usuario", "usuarios");
+  set("statAdmins", admins, "administrador", "administradores");
+  set("statUsers", total - admins, "usuario normal", "usuarios normales");
+}
+
 function renderUsersTable(usuarios) {
+  updateStats(usuarios);
   if (!usuarios.length) {
     usersTableWrap.innerHTML = `<p class="muted">No hay usuarios registrados.</p>`;
     return;
@@ -347,3 +364,18 @@ async function init() {
 }
 
 init();
+
+/* ---------- Tema claro / oscuro ---------- */
+const themeBtn = document.getElementById("themeToggleBtn");
+if (themeBtn) {
+  const syncTheme = () => {
+    themeBtn.textContent = document.documentElement.getAttribute("data-theme") === "dark" ? "Modo claro" : "Modo oscuro";
+  };
+  syncTheme();
+  themeBtn.addEventListener("click", () => {
+    const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("pangoa_theme", next); } catch {}
+    syncTheme();
+  });
+}
