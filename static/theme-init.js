@@ -1,9 +1,11 @@
-// Aplica el tema guardado antes de pintar la página (evita el "parpadeo" claro/oscuro).
+// Se ejecuta antes de pintar: aplica el tema guardado y decide si se usan animaciones.
 (function () {
+  var root = document.documentElement;
   try {
-    var t = localStorage.getItem("pangoa_theme") === "dark" ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", t);
+    root.setAttribute("data-theme", localStorage.getItem("pangoa_theme") === "dark" ? "dark" : "light");
   } catch (e) {
-    document.documentElement.setAttribute("data-theme", "light");
+    root.setAttribute("data-theme", "light");
   }
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  root.setAttribute("data-fx", reduce ? "off" : "on");
 })();
