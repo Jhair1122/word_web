@@ -1,5 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/+esm";
 import { setupAuthCookieSync } from "./auth-sync.js";
+import { initRecovery } from "./recovery.js";
 
 const SUPABASE_URL = "https://wojinjaczmwlojihoebp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvamluamFjem13bG9qaWhvZWJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwODQ2MzgsImV4cCI6MjEwMjY2MDYzOH0.VY5RVZVJMgDoYl-4BoAwe4h0IrKoHv_wJvpMdSjVdr4";
@@ -372,7 +373,31 @@ function pageMatchesSearch(page, query) {
   return haystack.includes(q);
 }
 
+// Cifras animadas de la portada y pila 3D de hojas (solo visual; no afecta los datos)
+function updateHeroStats() {
+  const fx = window.PangoaFX;
+  if (!fx) return;
+  const cajas = new Set();
+  let items = 0;
+  pages.forEach((raw) => {
+    const p = normalizePage(raw);
+    if (String(p.caja || "").trim()) cajas.add(String(p.caja).trim());
+    items += p.items.length;
+  });
+  fx.countTo(document.getElementById("heroPages"), pages.length);
+  fx.countTo(document.getElementById("heroCajas"), cajas.size);
+  fx.countTo(document.getElementById("heroItems"), items);
+  fx.setSheets(pages.length);
+  // singular / plural en las etiquetas de las cifras
+  [["heroPages", pages.length, "página", "páginas"], ["heroCajas", cajas.size, "caja", "cajas"], ["heroItems", items, "cuadro", "cuadros"]]
+    .forEach(([id, n, one, many]) => {
+      const label = document.getElementById(id)?.parentElement?.querySelector("span");
+      if (label) label.textContent = n === 1 ? one : many;
+    });
+}
+
 function renderPages() {
+  updateHeroStats();
   pageCount.textContent = pages.length;
   totalPagesEl.textContent = pages.length;
   pagesList.innerHTML = "";
@@ -714,6 +739,7 @@ async function downloadWord() {
     a.remove();
     URL.revokeObjectURL(url);
     showToast(`Descargado: ${filename}`, "success");
+    if (window.PangoaFX) window.PangoaFX.celebrate();
   } catch (err) {
     showToast("No se pudo generar el documento. Revisa tu conexión e intenta de nuevo.", "error");
   } finally {
@@ -1258,3 +1284,5 @@ if (fileMenu) {
     }
   });
 }
+
+initRecovery({ authFetch, showToast });
