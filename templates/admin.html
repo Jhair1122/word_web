@@ -4,32 +4,48 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Administrar usuarios - Generador Pangoa</title>
+  <link rel="icon" href="{{ url_for('static', filename='logo.jpg') }}">
   <meta name="color-scheme" content="light dark">
   <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
 </head>
 <body data-min-password="{{ min_password }}">
-  <header class="nav container">
-    <div class="brand-block">
-      <span class="brand">Generador de sobres</span>
-      <span class="brand-sub">Municipalidad Distrital de Pangoa</span>
-    </div>
-    <div class="nav-actions">
-      <a href="/" class="secondary">← Volver al generador</a>
-      <button id="logoutBtn" class="secondary" type="button">Cerrar sesión</button>
+  <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="topnav">
+    <div class="container topnav-inner">
+      <a class="brand-link" href="/" aria-label="Generador de sobres - Inicio">
+        <span class="logo-badge"><img src="{{ url_for('static', filename='logo.jpg') }}" alt="Escudo de la Municipalidad Distrital de Pangoa" width="44" height="44"></span>
+        <span class="brand-text">
+          <span class="brand-name">Generador de sobres</span>
+          <span class="brand-sub">Administración &middot; Municipalidad Distrital de Pangoa</span>
+        </span>
+      </a>
+      <div class="nav-actions">
+        <a href="/" class="secondary">&larr; Volver al generador</a>
+        <button id="themeToggleBtn" class="secondary" type="button" aria-label="Cambiar entre tema claro y oscuro">Modo oscuro</button>
+        <button id="logoutBtn" class="secondary" type="button">Cerrar sesión</button>
+      </div>
     </div>
   </header>
 
-  <section class="page-head container">
-    <span class="eyebrow">Administración</span>
-    <h1 class="heading-lg">Gestiona los <em>usuarios</em></h1>
-    <p class="lead">Crea cuentas, restablece contraseñas y elimina accesos. Solo los administradores ven esta página.</p>
+  <section class="admin-hero container">
+    <div class="admin-hero-text">
+      <span class="eyebrow" data-reveal="1">Administración</span>
+      <h1 class="display" data-reveal="2">Gestiona los <span class="grad">usuarios</span>.</h1>
+      <p class="lead" data-reveal="3">Crea cuentas, restablece contraseñas y elimina accesos. Solo los administradores ven esta página.</p>
+    </div>
+    <div class="stat-row" data-reveal="4">
+      <div class="stat"><b id="statTotal">0</b><span>usuarios</span></div>
+      <div class="stat"><b id="statAdmins">0</b><span>administradores</span></div>
+      <div class="stat"><b id="statUsers">0</b><span>usuarios normales</span></div>
+    </div>
   </section>
 
   <main class="admin-main container">
-    <section class="card">
-      <h2>Crear nuevo usuario</h2>
+    <section class="sheet" data-reveal="2">
+      <h2 class="h2">Crear nuevo usuario</h2>
       <div id="createError" class="error-box" role="alert" hidden></div>
       <div class="form-row">
         <label>Usuario
@@ -51,8 +67,8 @@
       </div>
     </section>
 
-    <section class="card">
-      <h2>Usuarios existentes</h2>
+    <section class="sheet" data-reveal="2">
+      <h2 class="h2">Usuarios existentes</h2>
       <div id="usersTableWrap">
         <p class="muted">Cargando usuarios...</p>
       </div>
@@ -87,6 +103,7 @@
     </div>
   </div>
 
+  <script src="{{ url_for('static', filename='fx.js') }}" defer></script>
   <script type="module" src="{{ url_for('static', filename='admin.js') }}"></script>
 </body>
 </html>
