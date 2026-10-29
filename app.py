@@ -2,6 +2,9 @@ import os
 import re
 import time
 import uuid
+import hmac
+import hashlib
+import secrets
 import threading
 from collections import defaultdict, deque
 from functools import wraps
@@ -601,7 +604,7 @@ def index():
 
 @app.get("/login")
 def login_page():
-    return render_template("login.html")
+    return render_template("login.html", min_password=MIN_PASSWORD_LENGTH)
 
 
 @app.get("/admin")
@@ -844,6 +847,190 @@ def restablecer_password(user_id):
 
     app.logger.info("ADMIN %s restableció la contraseña del usuario %s", g.admin_id, uid)
     return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Recuperación de contraseña con códigos de un solo uso
+# ---------------------------------------------------------------------------
+# Los usuarios no tienen correo real (se usa usuario@pangoa.local), así que no se puede
+# enviar un enlace por email. Cada usuario genera 8 códigos de recuperación estando
+# conectado (pidiendo su contraseña actual), los guarda, y si la olvida usa uno para
+# poner una contraseña nueva. Solo se guarda un hash (PBKDF2) de cada código y la
+# tabla recovery_codes solo la lee el servidor (service role). Ver supabase_recuperacion.sql.
+RECOVERY_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"   # sin 0/O/1/I/L para evitar confusiones
+RECOVERY_CODE_COUNT = 8
+RECOVERY_ID_LEN = 4        # parte pública que identifica el código (no aporta secreto)
+RECOVERY_SECRET_LEN = 12   # ~59 bits de entropía
+RECOVERY_PBKDF2_ITER = 120_000
+RECOVERY_UNAVAILABLE = "La recuperación de contraseña aún no está disponible. Pide al administrador que la restablezca."
+
+
+def _service_client():
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+
+def _hash_recovery_code(code, salt_hex):
+    return hashlib.pbkdf2_hmac("sha256", code.encode(), bytes.fromhex(salt_hex), RECOVERY_PBKDF2_ITER).hex()
+
+
+def _normalize_recovery_code(raw):
+    code = re.sub(r"[^A-Z0-9]", "", str(raw or "").upper())
+    if len(code) != RECOVERY_ID_LEN + RECOVERY_SECRET_LEN or any(c not in RECOVERY_ALPHABET for c in code):
+        return None
+    return code
+
+
+def _format_recovery_code(code):
+    return "-".join(code[i:i + 4] for i in range(0, len(code), 4))
+
+
+def _new_recovery_codes():
+    codes, ids = [], set()
+    while len(codes) < RECOVERY_CODE_COUNT:
+        code = "".join(secrets.choice(RECOVERY_ALPHABET) for _ in range(RECOVERY_ID_LEN + RECOVERY_SECRET_LEN))
+        if code[:RECOVERY_ID_LEN] in ids:
+            continue
+        ids.add(code[:RECOVERY_ID_LEN])
+        codes.append(code)
+    return codes
+
+
+@app.get("/auth/recovery-status")
+@require_auth
+def recovery_status():
+    try:
+        rows = (_service_client().table("recovery_codes").select("id")
+                .eq("user_id", g.user_id).is_("used_at", "null").execute().data or [])
+    except APIError:
+        app.logger.warning("Tabla recovery_codes no disponible")
+        return jsonify({"available": False, "remaining": 0})
+    return jsonify({"available": True, "remaining": len(rows)})
+
+
+@app.post("/auth/recovery-codes")
+@require_auth
+@rate_limit("recovery-gen", 5, 3600)
+def generar_codigos_recuperacion():
+    payload = request.get_json(silent=True) or {}
+    password = str(payload.get("password") or "")
+    if not password or len(password) > MAX_PASSWORD_LENGTH:
+        return jsonify({"error": "Escribe tu contraseña actual para generar los códigos."}), 400
+
+    k_reauth = f"recovery-reauth:{g.user_id}"
+    wait = limiter.blocked(k_reauth, 5, 900)
+    if wait:
+        return too_many(wait)
+
+    service = _service_client()
+    try:
+        prof = service.table("profiles").select("email").eq("id", g.user_id).execute().data or []
+        if not prof:
+            return jsonify({"error": "Usuario no encontrado."}), 404
+        create_client(SUPABASE_URL, SUPABASE_ANON_KEY).auth.sign_in_with_password(
+            {"email": prof[0]["email"], "password": password})
+    except APIError:
+        app.logger.exception("Error leyendo el perfil")
+        return jsonify({"error": "No se pudieron generar los códigos."}), 500
+    except Exception:
+        limiter.hit(k_reauth)
+        # 403 (no 401): el front trata 401 como sesión vencida y cerraría la sesión por un simple error de tecleo
+        return jsonify({"error": "La contraseña actual no es correcta."}), 403
+    limiter.reset(k_reauth)
+
+    codes = _new_recovery_codes()
+    rows = []
+    for code in codes:
+        salt = secrets.token_hex(16)
+        rows.append({
+            "user_id": g.user_id,
+            "lookup": code[:RECOVERY_ID_LEN],
+            "salt": salt,
+            "code_hash": _hash_recovery_code(code, salt),
+        })
+    try:
+        old = service.table("recovery_codes").select("id").eq("user_id", g.user_id).execute().data or []
+        service.table("recovery_codes").insert(rows).execute()
+        for row in old:  # se borran los anteriores solo después de guardar los nuevos
+            service.table("recovery_codes").delete().eq("id", row["id"]).execute()
+    except APIError:
+        app.logger.exception("Error guardando los códigos de recuperación")
+        return jsonify({"error": RECOVERY_UNAVAILABLE}), 503
+
+    app.logger.info("Usuario %s generó nuevos códigos de recuperación", g.user_id)
+    return jsonify({"codes": [_format_recovery_code(c) for c in codes], "remaining": len(codes)})
+
+
+@app.post("/auth/recover")
+def recuperar_con_codigo():
+    payload = request.get_json(silent=True) or {}
+    username = re.sub(r"[^a-zA-Z0-9_.-]", "", str(payload.get("username") or "").strip()).lower()
+    code = _normalize_recovery_code(payload.get("code"))
+    password = str(payload.get("password") or "")
+
+    if not username or not payload.get("code") or not password:
+        return jsonify({"error": "Completa el usuario, el código de recuperación y la contraseña nueva."}), 400
+    if len(username) > 40 or len(password) > MAX_PASSWORD_LENGTH:
+        return jsonify({"error": "Usuario o código de recuperación incorrectos."}), 401
+
+    ip = request.remote_addr or "?"
+    k_pair = f"recover-pair:{username}:{ip}"
+    k_user = f"recover-user:{username}"
+    k_ip = f"recover-ip:{ip}"
+    wait = max(limiter.blocked(k_pair, 5, 900), limiter.blocked(k_user, 10, 900), limiter.blocked(k_ip, 30, 900))
+    if wait:
+        app.logger.warning("Recuperación bloqueada por demasiados intentos: usuario=%s ip=%s", username, ip)
+        return too_many(wait)
+
+    def fail():
+        for key in (k_pair, k_user, k_ip):
+            limiter.hit(key)
+        return jsonify({"error": "Usuario o código de recuperación incorrectos."}), 401
+
+    service = _service_client()
+    try:
+        prof = service.table("profiles").select("id").ilike("username", ilike_exact(username)).execute().data or []
+        row = None
+        if prof and code:
+            cands = (service.table("recovery_codes").select("id,salt,code_hash,used_at")
+                     .eq("user_id", prof[0]["id"]).eq("lookup", code[:RECOVERY_ID_LEN]).execute().data or [])
+            cands = [c for c in cands if not c.get("used_at")]
+            row = cands[0] if cands else None
+    except APIError:
+        app.logger.exception("Error en la recuperación de contraseña")
+        return jsonify({"error": RECOVERY_UNAVAILABLE}), 503
+
+    # Siempre se calcula un hash para que la respuesta tarde parecido exista o no el usuario/código
+    salt = row["salt"] if row else "00" * 16
+    candidate = _hash_recovery_code(code or ("A" * 16), salt)
+    if not row or not code or not hmac.compare_digest(candidate, row["code_hash"]):
+        return fail()
+
+    problem = validate_password(password, username)
+    if problem:
+        return jsonify({"error": problem}), 400
+
+    uid = prof[0]["id"]
+    try:
+        claimed = (service.table("recovery_codes")
+                   .update({"used_at": datetime.utcnow().isoformat() + "Z"})
+                   .eq("id", row["id"]).is_("used_at", "null").execute().data or [])
+        if not claimed:  # otro intento lo usó justo antes
+            return fail()
+        try:
+            service.auth.admin.update_user_by_id(uid, {"password": password})
+        except Exception:
+            service.table("recovery_codes").update({"used_at": None}).eq("id", row["id"]).execute()
+            raise
+    except Exception:
+        app.logger.exception("No se pudo cambiar la contraseña con código de recuperación")
+        return jsonify({"error": "No se pudo cambiar la contraseña. Intenta de nuevo."}), 500
+
+    for key in (k_pair, k_user):
+        limiter.reset(key)
+    left = len([1 for c in (service.table("recovery_codes").select("id")
+                            .eq("user_id", uid).is_("used_at", "null").execute().data or [])])
+    app.logger.info("Usuario %s cambió su contraseña con un código de recuperación (quedan %s)", uid, left)
+    return jsonify({"ok": True, "remaining": left})
 
 
 @app.delete("/admin/usuarios/<user_id>")
