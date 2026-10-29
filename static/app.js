@@ -74,7 +74,6 @@ const currentNumber = document.getElementById("currentNumber");
 const totalPagesEl = document.getElementById("totalPages");
 const pageCount = document.getElementById("pageCount");
 const statusEl = document.getElementById("status");
-const statusIconEl = document.getElementById("statusIconEl");
 const statusTextEl = document.getElementById("statusTextEl");
 const itemsContainer = document.getElementById("itemsContainer");
 const pageSearch = document.getElementById("pageSearch");
@@ -97,7 +96,6 @@ const STATUS_STATES = { "✅": "saved", "💾": "saving", "⏳": "loading", "⚠
 
 function setStatus(text, icon) {
   if (statusEl) statusEl.dataset.state = STATUS_STATES[icon] || "loading";
-  if (statusIconEl) statusIconEl.textContent = "";
   if (statusTextEl) statusTextEl.textContent = text;
   else statusEl.textContent = text;
 }
@@ -127,11 +125,12 @@ function showToast(message, level = "info") {
   toastTimer = setTimeout(() => { toastEl.hidden = true; }, 6000);
 }
 
-function showConfirm(message) {
+function showConfirm(message, okLabel = "Eliminar") {
   return new Promise((resolve) => {
     confirmMessage.textContent = message;
+    confirmOkBtn.textContent = okLabel;
     confirmModal.hidden = false;
-    confirmOkBtn.focus();
+    confirmCancelBtn.focus(); // el foco inicial va en la opción segura; Enter no destruye nada por accidente
 
     const cleanup = (result) => {
       confirmModal.hidden = true;
@@ -145,10 +144,7 @@ function showConfirm(message) {
     const onOk = () => cleanup(true);
     const onCancel = () => cleanup(false);
     const onOverlayClick = (e) => { if (e.target === confirmModal) cleanup(false); };
-    const onKeydown = (e) => {
-      if (e.key === "Escape") cleanup(false);
-      if (e.key === "Enter") cleanup(true);
-    };
+    const onKeydown = (e) => { if (e.key === "Escape") cleanup(false); };
 
     confirmOkBtn.addEventListener("click", onOk);
     confirmCancelBtn.addEventListener("click", onCancel);
@@ -339,9 +335,21 @@ function addItem(item = emptyItem()) {
   renumberItems();
 }
 
+// Página nueva que repite los datos que casi siempre son iguales dentro de una caja.
+function newPageLike(base) {
+  const fresh = emptyPage();
+  const b = normalizePage(base || emptyPage());
+  ["caja", "codigo", "seccion", "serie_doc", "anio"].forEach((k) => { if (b[k] !== undefined && b[k] !== "") fresh[k] = b[k]; });
+  return fresh;
+}
+
 function renumberItems() {
-  itemsContainer.querySelectorAll(".item-card").forEach((card, index) => {
+  const cards = itemsContainer.querySelectorAll(".item-card");
+  cards.forEach((card, index) => {
     card.querySelector(".item-number").textContent = index + 1;
+    // con un solo cuadro "Eliminar" no puede quitarlo: solo lo vacía, y el botón lo dice
+    const rm = card.querySelector(".remove-item");
+    if (rm) rm.textContent = cards.length === 1 ? "Vaciar" : "Eliminar";
   });
 }
 
@@ -376,7 +384,7 @@ function pageMatchesSearch(page, query) {
 // Cifras animadas de la portada y pila 3D de hojas (solo visual; no afecta los datos)
 function updateHeroStats() {
   const fx = window.PangoaFX;
-  if (!fx) return;
+  if (!fx || !document.getElementById("heroPages")) return;
   const cajas = new Set();
   let items = 0;
   pages.forEach((raw) => {
@@ -398,6 +406,10 @@ function updateHeroStats() {
 
 function renderPages() {
   updateHeroStats();
+  const prev = document.getElementById("prevBtn"), next = document.getElementById("nextBtn"), del = document.getElementById("deletePageBtn");
+  if (prev) prev.disabled = current <= 0;
+  if (next) next.textContent = current >= pages.length - 1 ? "Agregar página →" : "Siguiente →";
+  if (del) del.textContent = pages.length === 1 ? "Vaciar página" : "Eliminar página";
   pageCount.textContent = pages.length;
   totalPagesEl.textContent = pages.length;
   pagesList.innerHTML = "";
@@ -432,7 +444,7 @@ function renderPages() {
     removeBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (pages.length === 1) {
-        const ok = await showConfirm("¿Vaciar el contenido de esta página?");
+        const ok = await showConfirm("¿Vaciar el contenido de esta página?", "Vaciar");
         if (!ok) return;
         pages[0] = emptyPage();
         lastDeleted = null;
@@ -549,7 +561,7 @@ document.getElementById("addItemBtn").addEventListener("click", async () => {
 
 document.getElementById("nextBtn").addEventListener("click", async () => {
   await saveCurrent();
-  if (current === pages.length - 1) pages.push(emptyPage());
+  if (current === pages.length - 1) pages.push(newPageLike(pages[current]));
   current++;
   fillForm(pages[current]);
   renderPages();
@@ -566,7 +578,7 @@ document.getElementById("prevBtn").addEventListener("click", async () => {
 
 document.getElementById("newPageBtn").addEventListener("click", async () => {
   await saveCurrent();
-  pages.push(emptyPage());
+  pages.push(newPageLike(pages[current]));
   current = pages.length - 1;
   fillForm(pages[current]);
   renderPages();
@@ -584,7 +596,7 @@ document.getElementById("duplicatePageBtn").addEventListener("click", async () =
 
 document.getElementById("deletePageBtn").addEventListener("click", async () => {
   if (pages.length === 1) {
-    const ok = await showConfirm("¿Vaciar el contenido de esta página?");
+    const ok = await showConfirm("¿Vaciar el contenido de esta página?", "Vaciar");
     if (!ok) return;
     pages[0] = emptyPage();
     lastDeleted = null;
@@ -608,7 +620,7 @@ document.getElementById("deletePageBtn").addEventListener("click", async () => {
 });
 
 document.getElementById("clearAllBtn").addEventListener("click", async () => {
-  const ok = await showConfirm("¿Borrar TODAS las páginas y empezar un documento nuevo desde cero? Esta acción no se puede deshacer.");
+  const ok = await showConfirm("¿Borrar TODAS las páginas y empezar un documento nuevo desde cero? Esta acción no se puede deshacer.", "Borrar todo");
   if (!ok) return;
 
   lastDeleted = { type: "clear", pages: pages.map(normalizePage) };
@@ -662,7 +674,7 @@ previewCloseBtn.addEventListener("click", () => { previewModal.hidden = true; })
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape" || !confirmModal.hidden) return;
   if (!previewModal.hidden) previewModal.hidden = true;
-  else if (!importModal.hidden) importModal.hidden = true;
+  else if (!importModal.hidden) closeImportModal();
 });
 previewModal.addEventListener("click", (e) => { if (e.target === previewModal) previewModal.hidden = true; });
 
@@ -994,16 +1006,32 @@ function renderImportPreview(cajaPages) {
     : "";
 }
 
-function openImportModal() {
+function resetImportModal() {
+  importedByCaja = new Map();
+  importSkippedRows = 0;
   importStep1.hidden = false;
   importStep2.hidden = true;
   importFileStatus.textContent = "";
+  importCajaSelect.innerHTML = "";
+  importSummary.textContent = "";
+  importPreviewWrap.innerHTML = "";
+  importWarnings.textContent = "";
+  document.getElementById("importDiffWrap").innerHTML = "";
+}
+
+function openImportModal() {
+  resetImportModal();
   importModal.hidden = false;
 }
 
+function closeImportModal() {
+  importModal.hidden = true;
+  resetImportModal(); // la próxima vez se empieza de cero: sin comparaciones ni cajas de la vez anterior
+}
+
 document.getElementById("importExcelBtn").addEventListener("click", openImportModal);
-document.getElementById("importCloseBtn").addEventListener("click", () => { importModal.hidden = true; });
-importModal.addEventListener("click", (e) => { if (e.target === importModal) importModal.hidden = true; });
+document.getElementById("importCloseBtn").addEventListener("click", closeImportModal);
+importModal.addEventListener("click", (e) => { if (e.target === importModal) closeImportModal(); });
 
 importPickFileBtn.addEventListener("click", () => excelFileInput.click());
 
@@ -1053,6 +1081,7 @@ excelFileInput.addEventListener("change", async (event) => {
 });
 
 importCajaSelect.addEventListener("change", () => {
+  document.getElementById("importDiffWrap").innerHTML = "";
   const caja = Number(importCajaSelect.value);
   renderImportPreview(importedByCaja.get(caja));
 });
@@ -1063,7 +1092,7 @@ async function commitImport(mode) {
   if (!cajaPages || !cajaPages.length) return;
 
   if (mode === "replace") {
-    const ok = await showConfirm(`Esto reemplazará TODAS las páginas actuales por las ${cajaPages.length} páginas de la Caja ${caja}. ¿Continuar?`);
+    const ok = await showConfirm(`Esto reemplazará TODAS las páginas actuales por las ${cajaPages.length} páginas de la Caja ${caja}. ¿Continuar?`, "Reemplazar todo");
     if (!ok) return;
     pages = cajaPages.map(p => JSON.parse(JSON.stringify(p)));
     current = 0;
@@ -1075,7 +1104,10 @@ async function commitImport(mode) {
   await persist();
   fillForm(pages[current]);
   renderPages();
-  importModal.hidden = true;
+  closeImportModal();
+  showToast(mode === "replace"
+    ? `Listo: el documento ahora tiene las ${cajaPages.length} páginas de la Caja ${caja}.`
+    : `Listo: se agregaron ${cajaPages.length} páginas de la Caja ${caja} al final.`, "success");
 }
 
 document.getElementById("importReplaceBtn").addEventListener("click", () => commitImport("replace"));
@@ -1159,6 +1191,11 @@ function renderDiffReport(caja, excelPages) {
   const wrap = document.getElementById("importDiffWrap");
   const issues = diffCajaPages(caja, excelPages);
 
+  if (!buildCurrentIndexForCaja(caja).size) {
+    wrap.innerHTML = `<p class="diff-msg diff-ok">No tienes páginas de la Caja ${caja} en el documento actual: todo lo del Excel se agregaría como nuevo.</p>`;
+    return;
+  }
+
   if (!issues.length) {
     wrap.innerHTML = `<p class="diff-msg diff-ok">Todo coincide exactamente entre el Excel y lo que ya está guardado para la Caja ${caja}.</p>`;
     return;
@@ -1209,7 +1246,6 @@ const CONN_YELLOW_AT = 5 * 60;      // pasa a amarillo cuando quedan 5 min
 const CONN_RED_AT = 60;             // pasa a rojo cuando queda 1 min
 
 const connCountdownEl = document.getElementById("connCountdown");
-const connCountdownIconEl = document.getElementById("connCountdownIcon");
 const connCountdownTextEl = document.getElementById("connCountdownText");
 const connToastEl = document.getElementById("connToast");
 
@@ -1245,7 +1281,6 @@ function updateConnUI() {
     connState = newState;
     connCountdownEl.classList.remove("state-green", "state-yellow", "state-red");
     connCountdownEl.classList.add("state-" + newState);
-    connCountdownIconEl.textContent = "";
 
     if (newState === "yellow") {
       showConnToast("Queda poco tiempo de inactividad: el servidor podría ponerse en reposo pronto. Cualquier acción (guardar, cambiar de página) lo mantiene activo.", "yellow");
