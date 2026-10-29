@@ -5,22 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iniciar sesión - Generador Pangoa</title>
   <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="{{ url_for('static', filename='logo.jpg') }}">
   <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
 </head>
-<body>
+<body data-min-password="{{ min_password }}">
+  <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+
   <main class="login-page container">
     <section class="login-intro">
-      <span class="brand">Generador de sobres</span>
-      <h1 class="heading-lg">Tus sobres de archivo, <em>listos en Word</em></h1>
-      <p class="lead">Municipalidad Distrital de Pangoa. Registra los datos, importa desde Excel y descarga el documento con la plantilla original.</p>
+      <span class="logo-badge logo-badge--lg" data-reveal="1">
+        <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Escudo de la Municipalidad Distrital de Pangoa" width="96" height="96">
+      </span>
+      <span class="eyebrow" data-reveal="2">Municipalidad Distrital de Pangoa</span>
+      <h1 class="display" data-reveal="3">Tus sobres, <span class="grad">listos en Word</span>.</h1>
+      <p class="lead" data-reveal="4">Registra los datos, importa una caja desde Excel y descarga el documento con la plantilla original.</p>
+
+      <div class="scene" aria-hidden="true" data-reveal="5">
+        <div class="scene-shadow"></div>
+        <div class="scene-rig">
+          <div class="stack">
+            <div class="sh"></div><div class="sh"></div><div class="sh"></div><div class="sh"></div><div class="sh"></div>
+            <div class="sh top">
+              <div class="band"><img src="{{ url_for('static', filename='logo.jpg') }}" alt=""></div>
+              <div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div>
+              <div class="cell"><b></b><b></b></div>
+            </div>
+          </div>
+        </div>
+        <div class="chip3d c1"><b>Excel</b><span>importa una caja</span></div>
+        <div class="chip3d c2"><b>Word</b><span>plantilla original</span></div>
+        <div class="chip3d c3"><b>Respaldo</b><span>siempre a mano</span></div>
+      </div>
     </section>
 
-    <section class="login-card" aria-labelledby="loginTitle">
-      <h2 id="loginTitle">Iniciar sesión</h2>
+    <section class="login-card sheet" aria-labelledby="loginTitle" data-reveal="3">
+      <h2 id="loginTitle" class="h2">Iniciar sesión</h2>
       <p class="login-sub">Ingresa con el usuario que te dio el administrador.</p>
 
+      <div id="loginOk" class="login-ok" role="status" hidden></div>
       <div id="loginError" class="login-error" role="alert" hidden></div>
 
       <label class="field">
@@ -33,17 +57,51 @@
         <input type="password" id="loginPassword" autocomplete="current-password" placeholder="Tu contraseña" maxlength="128">
       </label>
 
-      <label class="show-pass">
-        <input type="checkbox" id="showPassword">
-        <span>Mostrar contraseña</span>
-      </label>
+      <div class="login-row">
+        <label class="show-pass">
+          <input type="checkbox" id="showPassword">
+          <span>Mostrar contraseña</span>
+        </label>
+        <button type="button" id="forgotBtn" class="link-btn">He olvidado mi contraseña</button>
+      </div>
 
       <button type="button" id="loginBtn" class="primary-btn">Ingresar</button>
 
-      <p class="login-note">Sistema de uso interno. Se guardan tu usuario y los sobres que registras. Si olvidaste tu contraseña, pide al administrador que la restablezca.</p>
+      <p class="login-note">Sistema de uso interno. Se guardan tu usuario y los sobres que registras.</p>
+      <button type="button" id="themeToggleBtn" class="link-btn theme-link" aria-label="Cambiar entre tema claro y oscuro">Modo oscuro</button>
     </section>
   </main>
 
+  <div id="forgotModal" class="modal-overlay" hidden>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+      <div class="modal-header">
+        <h3 id="forgotTitle">Recuperar mi contraseña</h3>
+        <button type="button" id="forgotCloseBtn" class="secondary">Cerrar</button>
+      </div>
+      <p class="help-text forgot-help">Usa uno de tus <strong>códigos de recuperación</strong> (los generaste en el generador, menú Archivo &rarr; Códigos de recuperación). Cada código sirve una sola vez.</p>
+
+      <form id="forgotForm" autocomplete="off" novalidate>
+        <label class="modal-field">Usuario
+          <input type="text" id="forgotUsername" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="40" placeholder="Ej.: maria.lopez">
+        </label>
+        <label class="modal-field">Código de recuperación
+          <input type="text" id="forgotCode" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="19" placeholder="XXXX-XXXX-XXXX-XXXX" inputmode="text" class="code-input">
+        </label>
+        <label class="modal-field">Nueva contraseña
+          <span class="password-wrap">
+            <input type="password" id="forgotPassword" autocomplete="new-password" maxlength="128" placeholder="Una frase larga, con espacios">
+            <button type="button" class="toggle-pass" id="forgotToggle" aria-label="Mostrar u ocultar la contraseña">Mostrar</button>
+          </span>
+          <ul id="forgotChecklist" class="pw-checklist" aria-live="polite"></ul>
+        </label>
+        <div id="forgotError" class="error-box" role="alert" hidden></div>
+        <button type="submit" id="forgotSubmit" class="primary full">Cambiar contraseña</button>
+      </form>
+      <p class="help-text forgot-foot">¿No tienes códigos? Pide al administrador que restablezca tu contraseña. Después, entra y genera tus códigos para no depender de él la próxima vez.</p>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='fx.js') }}" defer></script>
   <script type="module" src="{{ url_for('static', filename='login.js') }}"></script>
 </body>
 </html>
