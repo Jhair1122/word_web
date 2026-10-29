@@ -199,7 +199,12 @@ input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; margin: 0; ac
 .modal-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--overlay); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: fadeIn .18s ease; }
 .modal-box { width: min(100%, 480px); max-height: calc(100vh - 40px); overflow: auto; background: var(--sheet); color: var(--ink); border-radius: 22px; box-shadow: var(--shadow-pop); padding: 30px; animation: popIn .26s cubic-bezier(.2, .9, .3, 1.2); }
 .modal-box > p { font-size: 17px; line-height: 1.45; margin-bottom: 20px; }
-.modal-box-large { width: min(100%, 960px); }
+.modal-box-large { width: min(100%, 960px); display: flex; flex-direction: column; overflow: hidden; }
+.modal-step { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.modal-scroll { overflow: auto; min-height: 0; flex: 1; padding-right: 4px; }
+.modal-step > .modal-actions { flex: none; margin-top: 0; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+/* la confirmación siempre queda por encima de cualquier otro panel abierto */
+#confirmModal { z-index: 320; }
 .modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .modal-header h3 { font-size: 24px; font-weight: 600; letter-spacing: -0.005em; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
