@@ -23,12 +23,12 @@
       </span>
     </a>
     <div class="nav-actions">
+      <button id="importExcelBtn" class="secondary" type="button">Importar desde Excel</button>
+      <input type="file" id="excelFileInput" accept=".xlsx,.xls" hidden>
       <details class="menu" id="fileMenu">
-        <summary>Archivo</summary>
+        <summary>Más</summary>
         <div class="menu-panel">
-          <span class="menu-label">Documento</span>
-          <button id="importExcelBtn" class="menu-item" type="button">Importar desde Excel</button>
-          <input type="file" id="excelFileInput" accept=".xlsx,.xls" hidden>
+          <span class="menu-label">Respaldo</span>
           <button id="saveJsonBtn" class="menu-item" type="button">Guardar respaldo</button>
           <label class="menu-item file-btn">Cargar respaldo
             <input id="loadJsonInput" type="file" accept=".json" hidden>
@@ -36,10 +36,10 @@
           <div class="menu-sep"></div>
           <span class="menu-label">Cuenta</span>
           <button id="recoveryOpenBtn" class="menu-item" type="button">Códigos de recuperación</button>
+          <button id="themeToggleBtn" class="menu-item" type="button" aria-label="Cambiar entre tema claro y oscuro">Modo oscuro</button>
         </div>
       </details>
       <a href="/admin" id="adminLink" class="secondary admin-link" hidden>Administrar usuarios</a>
-      <button id="themeToggleBtn" class="secondary" type="button" title="Cambiar tema" aria-label="Cambiar entre tema claro y oscuro">Modo oscuro</button>
       <button id="logoutBtn" class="secondary" type="button">Cerrar sesión</button>
       <button id="downloadBtn" class="primary" type="button">Descargar Word</button>
     </div>
@@ -89,11 +89,9 @@
       </div>
       <div class="status-group">
         <span id="status" class="status" role="status" aria-live="polite">
-          <span id="statusIconEl"></span>
           <span id="statusTextEl">Conectando...</span>
         </span>
         <span id="connCountdown" class="conn-countdown state-green">
-          <span id="connCountdownIcon"></span>
           <span id="connCountdownText">Conexión: 15:00</span>
         </span>
       </div>
@@ -224,20 +222,22 @@
       <p id="importFileStatus" class="help-text"></p>
     </div>
 
-    <div id="importStep2" hidden>
-      <label>Selecciona la caja a importar
-        <select id="importCajaSelect"></select>
-      </label>
-      <p id="importSummary" class="help-text"></p>
-      <div id="importPreviewWrap"></div>
-      <p id="importWarnings" class="help-text import-warnings"></p>
+    <div id="importStep2" class="modal-step" hidden>
+      <div class="modal-scroll">
+        <label>Caja a importar
+          <select id="importCajaSelect"></select>
+        </label>
+        <p id="importSummary" class="help-text"></p>
+        <div id="importPreviewWrap"></div>
+        <p id="importWarnings" class="help-text import-warnings"></p>
 
-      <button type="button" id="importVerifyBtn" class="secondary full">Verificar diferencias con lo actual</button>
-      <div id="importDiffWrap"></div>
+        <button type="button" id="importVerifyBtn" class="secondary full">Comparar con lo que ya tengo</button>
+        <div id="importDiffWrap"></div>
+      </div>
 
       <div class="modal-actions modal-actions--split">
-        <button type="button" id="importAppendBtn" class="secondary">Agregar al final del documento</button>
-        <button type="button" id="importReplaceBtn" class="danger">Reemplazar todas las páginas</button>
+        <button type="button" id="importAppendBtn" class="secondary">Agregar al final</button>
+        <button type="button" id="importReplaceBtn" class="danger">Reemplazar todo</button>
       </div>
     </div>
   </div>
