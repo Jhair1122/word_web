@@ -1,36 +1,36 @@
 /* Inicio de sesión. Requiere theme.css. */
-.login-page {
-  min-height: 100vh;
-  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 440px);
-  gap: clamp(32px, 7vw, 96px); align-items: center;
-  padding-block: 40px;
-}
-.login-intro .brand { display: inline-block; margin-bottom: 28px; }
-.login-intro .heading-lg { max-width: 14ch; }
-.login-intro .lead { margin-top: 18px; }
+.login-page { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 440px); gap: clamp(32px, 6vw, 88px); align-items: center; padding-block: 40px; }
+.login-intro { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.login-intro .logo-badge--lg { margin-bottom: 8px; }
+.login-intro .scene { width: 100%; min-height: 300px; margin-top: 8px; }
 
-.login-card {
-  background: var(--surface); border-radius: var(--radius-card);
-  padding: 36px 32px 28px;
-}
-.login-card h2 { font-family: var(--font-serif); font-weight: 400; font-size: 30px; letter-spacing: -0.012em; line-height: 1.15; }
-.login-sub { margin: 6px 0 22px; color: var(--muted); font-size: 14.5px; }
-
-.login-error {
-  margin-bottom: 16px; padding: 12px 14px; border-radius: 14px;
-  background: var(--danger-bg); color: var(--danger);
-  font-size: 14px; font-weight: 450; line-height: 1.4;
-}
+.login-card { padding: 36px 32px 24px; box-shadow: var(--shadow-pop); }
+.login-sub { margin: 6px 0 22px; color: var(--muted); font-size: 16px; }
+.login-error, .login-ok { margin-bottom: 16px; }
+.login-ok { padding: 12px 14px; border-radius: var(--r-field); background: color-mix(in srgb, var(--g-leaf) 20%, var(--sheet)); font-size: 14px; font-weight: 500; line-height: 1.4; }
 .field { margin-bottom: 16px; }
 .field > span { display: block; }
-.show-pass { display: flex; align-items: center; gap: 10px; margin: -2px 0 20px; font-size: 14px; font-weight: 430; color: var(--muted); cursor: pointer; }
-.primary-btn { width: 100%; min-height: 48px; font-size: 16px; }
+.login-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: -2px 0 20px; }
+.show-pass { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 400; color: var(--muted); cursor: pointer; }
+.link-btn { border: 0; background: transparent; padding: 4px 0; color: var(--link); font: 400 14px var(--font); letter-spacing: -0.01em; cursor: pointer; }
+.link-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+.primary-btn { width: 100%; min-height: 50px; font-size: 17px; }
 .login-note { margin-top: 20px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.theme-link { margin-top: 8px; font-size: 13px; color: var(--muted); }
 
-@media (max-width: 860px) {
-  .login-page { grid-template-columns: 1fr; align-content: center; gap: 28px; }
-  .login-intro .heading-lg { max-width: none; }
+/* Recuperar contraseña */
+.forgot-help { margin-bottom: 18px; }
+.forgot-foot { margin-top: 16px; }
+.code-input { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+
+@media (max-width: 900px) {
+  .login-page { grid-template-columns: 1fr; align-content: start; gap: 20px; padding-block: 24px; }
+  /* en pantallas chicas: marca compacta arriba y el formulario enseguida */
+  .login-intro { gap: 10px; }
+  .login-intro .logo-badge--lg { width: 72px; height: 72px; border-radius: 18px; margin-bottom: 2px; }
+  .login-intro .display { font-size: clamp(30px, 8vw, 40px); }
+  .login-intro .lead, .login-intro .scene { display: none; }
 }
 @media (max-width: 480px) {
-  .login-card { padding: 28px 20px 22px; }
+  .login-card { padding: 28px 20px 20px; }
 }
