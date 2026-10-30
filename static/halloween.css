@@ -1,55 +1,61 @@
 /* Decoración de Halloween (solo visual). Todo cuelga de .hw-layer y .hw-deco, que crea halloween.js */
-:root { --hw-web: rgb(70 50 100 / .42); --hw-ink: #2a1840; }
-[data-theme="dark"] { --hw-web: rgb(255 255 255 / .34); --hw-ink: #3a2457; }
+:root { --hw-web: rgb(70 50 100 / .5); --hw-web-main: rgb(70 50 100 / .62); --hw-leg: #2b1946; --hw-leg-hi: rgb(255 255 255 / .22); --hw-bat: #24143a; }
+[data-theme="dark"] { --hw-web: rgb(255 255 255 / .34); --hw-web-main: rgb(255 255 255 / .46); --hw-leg: #5b3d8a; --hw-leg-hi: rgb(255 255 255 / .3); --hw-bat: #3a2458; }
 .hw-defs-wrap { position: absolute; width: 0; height: 0; overflow: hidden; }
-.hw-layer { position: absolute; top: 0; left: 0; right: 0; height: 380px; overflow: hidden; pointer-events: none; z-index: 3; }
+.hw-layer { position: absolute; left: 0; right: 0; overflow: hidden; pointer-events: none; z-index: 3; }
 .hw-layer *, .hw-deco * { pointer-events: none; }
 
-/* Telarañas en las esquinas */
-.hw-web { position: absolute; top: 0; width: 200px; height: 200px; color: var(--hw-web); }
-.hw-web svg { width: 100%; height: 100%; display: block; }
+/* Telarañas */
+.hw-web { position: absolute; top: 0; }
 .hw-web-l { left: 0; }
 .hw-web-r { right: 0; transform: scaleX(-1); }
+.hw-web-svg { display: block; overflow: visible; transform-origin: 0 0; animation: hwWebSway 7s ease-in-out infinite; }
+.hw-web-r .hw-web-svg { animation-delay: -3s; }
+.hw-web-ring { stroke: var(--hw-web); stroke-width: .9; stroke-linecap: round; }
+.hw-web-main { stroke: var(--hw-web-main); stroke-width: 1.5; stroke-linecap: round; }
+@keyframes hwWebSway { 0%, 100% { transform: rotate(-.7deg); } 50% { transform: rotate(.9deg); } }
 
-/* Araña que baja y sube por su hilo */
-.hw-spider { position: absolute; left: 196px; top: 0; width: 38px; animation: hwSpider 8s ease-in-out infinite; transform-origin: top center; }
-.hw-spider svg { display: block; width: 38px; height: auto; animation: hwSway 4s ease-in-out infinite; transform-origin: 50% 0; }
-.hw-spider .thread { position: absolute; left: 50%; bottom: 100%; width: 1px; height: 300px; background: var(--hw-web); }
-.hw-spider .body { fill: var(--hw-ink); stroke: rgb(255 150 60 / .55); stroke-width: .8; }
-.hw-spider .legs { stroke: var(--hw-ink); stroke-width: 1.6; }
-[data-theme="dark"] .hw-spider .legs { stroke: #6a4a96; }
-@keyframes hwSpider { 0%, 100% { transform: translateY(46px); } 50% { transform: translateY(170px); } }
-@keyframes hwSway { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+/* Araña y su hilo */
+.hw-spider, .hw-bat { position: absolute; overflow: visible; }
+.hw-spider { top: 0; }
+.hw-knot { fill: var(--hw-web-main); }
+.hw-thread { stroke: var(--hw-web-main); stroke-width: 1.2; stroke-linecap: round; }
+.sp-leg { stroke: var(--hw-leg); stroke-linecap: round; }
+.sp-leg.l1 { stroke-width: 3.4; } .sp-leg.l2 { stroke-width: 2.6; } .sp-leg.l3 { stroke-width: 1.6; }
+.sp-hi { stroke: var(--hw-leg-hi); stroke-width: .7; stroke-linecap: round; }
+.sp-joint { fill: var(--hw-leg); stroke: var(--hw-leg-hi); stroke-width: .4; }
+.sp-body { stroke: rgb(255 150 60 / .4); stroke-width: .6; }
 
-/* Murciélagos: cruzan la parte alta y descansan fuera de pantalla */
-.hw-bat { position: absolute; left: 0; width: var(--s, 40px); top: var(--y, 80px); opacity: .92; animation: hwBatX var(--t, 24s) linear var(--d, 0s) infinite; transform: translateX(-140px); }
-.hw-bat.b1 { --y: 92px; --t: 22s; --d: 1s; }
-.hw-bat.b2 { --y: 190px; --t: 30s; --d: 9s; }
-.hw-bat.b3 { --y: 40px; --t: 36s; --d: 17s; }
-.hw-bat-in { animation: hwBatY 2.6s ease-in-out infinite; }
-.hw-bat svg { display: block; width: 100%; height: auto; overflow: visible; }
-.hw-bat svg > *:not(.wing), .hw-bat .wing { fill: var(--hw-ink); stroke: rgb(255 150 60 / .55); stroke-width: .7; }
-.hw-bat .eye { fill: #ff7a1a; stroke: none; }
-.hw-bat .wing { transform-box: fill-box; transform-origin: 100% 40%; animation: hwFlap .38s ease-in-out infinite; }
-@keyframes hwBatX { 0% { transform: translateX(-140px); } 42%, 100% { transform: translateX(calc(100vw + 140px)); } }
-@keyframes hwBatY { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-22px) rotate(4deg); } }
-@keyframes hwFlap { 0%, 100% { transform: rotate(-14deg) scaleY(1); } 50% { transform: rotate(26deg) scaleY(.5); } }
+/* Murciélagos */
+.hw-bat { left: 0; top: 0; visibility: hidden; will-change: transform; }
+.bat-mem { fill: var(--hw-bat); stroke: rgb(255 150 60 / .5); stroke-width: .6; stroke-linejoin: round; }
+.bat-bone { stroke: rgb(255 255 255 / .22); stroke-width: .7; stroke-linecap: round; }
+.bat-arm { stroke: var(--hw-bat); stroke-width: 2.6; stroke-linecap: round; }
+.bat-body { stroke: rgb(255 150 60 / .4); stroke-width: .5; }
+.bat-eye { fill: #ff7a1a; }
 
 /* Calabazas y fantasma junto a la escena 3D */
 .hw-deco { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .hw-deco > * { position: absolute; translate: calc(var(--px, 0) * var(--par, 10) * 1px) calc(var(--py, 0) * var(--par, 10) * .6px); transition: translate .3s ease-out; }
-.hw-pumpkin svg, .hw-ghost svg { display: block; width: 100%; height: auto; overflow: visible; }
-.hw-pumpkin.big { --par: 26; right: 6%; bottom: 8%; width: 104px; animation: hwBob 5.5s ease-in-out infinite; }
-.hw-pumpkin.small { --par: 40; left: 22%; bottom: 3%; width: 62px; animation: hwBob 4.6s ease-in-out -2s infinite; }
-.hw-ghost { --par: -18; right: 24%; top: -2%; width: 52px; opacity: .93; animation: hwFloat 6s ease-in-out infinite; filter: drop-shadow(0 0 10px rgb(190 160 255 / .55)); }
-.hw-flame { animation: hwFlicker 2.8s ease-in-out infinite; }
-.hw-glow { animation: hwFlicker 2.8s ease-in-out infinite; opacity: .85; }
-@keyframes hwBob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-7px) rotate(1.5deg); } }
-@keyframes hwFloat { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-14px) rotate(4deg); } }
-@keyframes hwFlicker { 0%, 100% { opacity: 1; } 18% { opacity: .78; } 36% { opacity: 1; } 54% { opacity: .86; } 72% { opacity: .96; } }
-[data-theme="dark"] .hw-pumpkin { filter: drop-shadow(0 0 18px rgb(255 140 20 / .32)); }
+.hw-pumpkin.big { --par: 26; right: 6%; bottom: 8%; }
+.hw-pumpkin.small { --par: 40; left: 22%; bottom: 3%; }
+.pk-stage { position: absolute; inset: 0; perspective: 560px; perspective-origin: 50% 35%; }
+.pk-body { position: absolute; inset: 0; transform-style: preserve-3d; transform-origin: 50% 88%; will-change: transform; }
+.pk-l { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.pk-glow { position: absolute; left: -35%; top: -25%; width: 170%; height: 160%; background: radial-gradient(closest-side, rgb(255 150 30 / .4), transparent 72%); }
+.pk-floor { position: absolute; left: -25%; right: -25%; bottom: -18%; height: 34%; background: radial-gradient(closest-side, rgb(255 160 40 / .5), transparent 75%); }
+.pk-shadow { position: absolute; left: 6%; right: 6%; bottom: -3%; height: 9%; border-radius: 50%; background: radial-gradient(closest-side, rgb(0 0 0 / .42), transparent); }
+[data-theme="dark"] .pk-glow { opacity: 1; }
 
-/* Tinte suave de Halloween: brillo ambiental y título en naranja y violeta */
+.hw-ghost { --par: -18; right: 24%; top: -2%; width: 58px; height: 76px; }
+.gh-stage { position: absolute; inset: 0; perspective: 420px; }
+.gh-body { position: absolute; inset: 0; transform-style: preserve-3d; }
+.gh-l { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.gh-aura { position: absolute; left: -60%; top: -40%; width: 220%; height: 190%; background: radial-gradient(closest-side, rgb(190 160 255 / .55), transparent 70%); }
+.gh-shadow { position: absolute; left: 10%; right: 10%; top: 135%; height: 8px; border-radius: 50%; background: radial-gradient(closest-side, rgb(60 40 110 / .35), transparent); }
+.gh-orb { position: absolute; left: 46%; top: 70%; width: 5px; height: 5px; border-radius: 50%; background: #e6dcff; box-shadow: 0 0 8px 2px rgb(200 175 255 / .8); opacity: 0; }
+
+/* Tinte suave de Halloween */
 [data-halloween="on"] .ambient i:nth-child(1) { background: #ff8a1f; }
 [data-halloween="on"] .ambient i:nth-child(2) { background: #8b3dff; }
 [data-halloween="on"] .ambient i:nth-child(3) { background: #ff5a1f; opacity: .22; }
@@ -57,14 +63,8 @@
 [data-halloween="on"] .sh .band { background: linear-gradient(100deg, #ff6a00, #ffb000 45%, #8b3dff); }
 
 @media (max-width: 900px) {
-  .hw-web { width: 130px; height: 130px; }
-  .hw-spider { left: 110px; }
-  .hw-pumpkin.big { width: 80px; }
+  .hw-pumpkin.big { width: 80px !important; height: 76px !important; }
   .hw-pumpkin.small, .hw-ghost { display: none; }
-  .hw-bat.b3 { display: none; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .hw-bat, .hw-spider { display: none; }
-}
-
+@media (prefers-reduced-motion: reduce) { .hw-web-svg { animation: none; } }
 #halloweenToggleBtn.link-btn { margin-left: 16px; }
