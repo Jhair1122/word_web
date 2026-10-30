@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iniciar sesión - Generador Pangoa</title>
   <meta name="color-scheme" content="light dark">
+  <meta name="supabase-url" content="{{ supabase_url }}">
+  <meta name="supabase-anon-key" content="{{ supabase_anon_key }}">
   <link rel="icon" href="{{ url_for('static', filename='logo.jpg') }}">
   <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='halloween.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
 </head>
 <body data-min-password="{{ min_password }}">
@@ -22,21 +25,29 @@
       <h1 class="display" data-reveal="3">Tus sobres, <span class="grad">listos en Word</span>.</h1>
       <p class="lead" data-reveal="4">Registra los datos, importa una caja desde Excel y descarga el documento con la plantilla original.</p>
 
-      <div class="scene" aria-hidden="true" data-reveal="5">
-        <div class="scene-shadow"></div>
-        <div class="scene-rig">
+      <div class="scene" data-reveal="5">
+        <div class="scene-shadow" aria-hidden="true"></div>
+        <div class="scene-rig" aria-hidden="true">
+        <div class="box">
+          <i class="bf floor"></i>
+          <i class="bf w-b"></i><i class="bf w-l"></i>
+          <i class="bf w-r"></i>
+          <i class="bf w-f"><em data-live-caja>CAJA</em></i>
+        </div>
           <div class="stack">
             <div class="sh"></div><div class="sh"></div><div class="sh"></div><div class="sh"></div><div class="sh"></div>
             <div class="sh top">
               <div class="band"><img src="{{ url_for('static', filename='logo.jpg') }}" alt=""></div>
+              <p class="live"><b>Sobre de archivo</b><span>Municipalidad Distrital de Pangoa</span></p>
               <div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div>
               <div class="cell"><b></b><b></b></div>
+              <i class="stamp">LISTO ✓</i>
             </div>
           </div>
         </div>
-        <div class="chip3d c1"><b>Excel</b><span>importa una caja</span></div>
-        <div class="chip3d c2"><b>Word</b><span>plantilla original</span></div>
-        <div class="chip3d c3"><b>Respaldo</b><span>siempre a mano</span></div>
+        <div class="chip3d c1"><i class="ci num">1</i><div><b>Ingresa</b><small>con el usuario que te dio el administrador</small></div></div>
+        <div class="chip3d c2"><i class="ci num">2</i><div><b>Completa</b><small>los datos de cada sobre o importa una caja de Excel</small></div></div>
+        <div class="chip3d c3"><i class="ci num">3</i><div><b>Descarga</b><small>el Word con la plantilla original</small></div></div>
       </div>
     </section>
 
@@ -102,6 +113,7 @@
   </div>
 
   <script src="{{ url_for('static', filename='fx.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='halloween.js') }}" defer></script>
   <script type="module" src="{{ url_for('static', filename='login.js') }}"></script>
 </body>
 </html>
