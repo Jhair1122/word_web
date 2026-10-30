@@ -29,6 +29,7 @@
     var rigs = document.querySelectorAll(".scene-rig");
     if (!fxOn || !finePointer || !rigs.length) return;
     var raf = 0, nx = 0, ny = 0;
+    var scenes = document.querySelectorAll(".scene");
     window.addEventListener("pointermove", function (e) {
       nx = (e.clientX / window.innerWidth) * 2 - 1;
       ny = (e.clientY / window.innerHeight) * 2 - 1;
@@ -38,6 +39,10 @@
         rigs.forEach(function (rig) {
           rig.style.setProperty("--rx", (56 - ny * 9) + "deg");
           rig.style.setProperty("--rz", (-34 + nx * 14) + "deg");
+        });
+        scenes.forEach(function (sc) {
+          sc.style.setProperty("--px", nx.toFixed(3));
+          sc.style.setProperty("--py", ny.toFixed(3));
         });
       });
     }, { passive: true });
@@ -78,9 +83,31 @@
     lastCount = count;
   }
 
+  // ---- La hoja de arriba muestra la caja y la página que se está editando ----
+  var lastIdx = null;
+  function setLive(caja, index, total) {
+    var c = document.getElementById("sceneCaja"), p = document.getElementById("scenePage");
+    if (c) c.textContent = caja ? "Caja " + caja : "Caja —";
+    if (p) p.textContent = "Página " + index + " de " + total;
+    var top = document.querySelector(".sh.top");
+    if (top && fxOn && lastIdx !== null && lastIdx !== index) {
+      top.style.setProperty("--flip", index > lastIdx ? "-62deg" : "62deg");
+      top.classList.remove("flip"); void top.offsetWidth; top.classList.add("flip");
+    }
+    lastIdx = index;
+  }
+
+  // ---- Sello "LISTO" sobre la hoja al terminar una descarga ----
+  function stamp() {
+    var el = document.querySelector(".sh.top .stamp");
+    if (!el || !fxOn) return;
+    el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+  }
+
   // ---- Confeti ----
   function celebrate() {
     if (!fxOn) return;
+    stamp();
     var layer = document.createElement("div");
     layer.className = "confetti-layer";
     layer.setAttribute("aria-hidden", "true");
@@ -109,7 +136,7 @@
     });
   }
 
-  window.PangoaFX = { countTo: countTo, setSheets: setSheets, celebrate: celebrate };
+  window.PangoaFX = { countTo: countTo, setSheets: setSheets, setLive: setLive, stamp: stamp, celebrate: celebrate };
   function init() { setupReveal(); setupScenes(); setupProxies(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
