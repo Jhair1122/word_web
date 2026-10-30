@@ -1,9 +1,8 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/+esm";
 import { setupAuthCookieSync } from "./auth-sync.js";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./supabase-config.js";
 import { initRecovery } from "./recovery.js";
 
-const SUPABASE_URL = "https://wojinjaczmwlojihoebp.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvamluamFjem13bG9qaWhvZWJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwODQ2MzgsImV4cCI6MjEwMjY2MDYzOH0.VY5RVZVJMgDoYl-4BoAwe4h0IrKoHv_wJvpMdSjVdr4";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 setupAuthCookieSync(supabase);
 
@@ -398,7 +397,7 @@ function updateHeroStats() {
   fx.setSheets(pages.length);
   if (fx.setLive) fx.setLive(String((normalizePage(pages[current] || {}).caja) || "").trim(), current + 1, pages.length);
   // singular / plural en las etiquetas de las cifras
-  [["heroPages", pages.length, "página", "páginas"], ["heroCajas", cajas.size, "caja", "cajas"], ["heroItems", items, "cuadro", "cuadros"]]
+  [["heroPages", pages.length, "hoja", "hojas"], ["heroCajas", cajas.size, "caja", "cajas"], ["heroItems", items, "cuadro", "cuadros"]]
     .forEach(([id, n, one, many]) => {
       const label = document.getElementById(id)?.parentElement?.querySelector("span");
       if (label) label.textContent = n === 1 ? one : many;
