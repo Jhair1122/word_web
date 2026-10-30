@@ -6,6 +6,7 @@ import hmac
 import hashlib
 import secrets
 import threading
+import urllib.request
 from collections import defaultdict, deque
 from functools import wraps
 from flask import Flask, render_template, request, send_file, jsonify, g, redirect
@@ -180,6 +181,7 @@ def add_security_headers(resp):
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("X-Frame-Options", "DENY")
     resp.headers.setdefault("Referrer-Policy", "same-origin")
+    resp.headers.setdefault("X-Robots-Tag", "noindex, nofollow")
     resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
     header = "Content-Security-Policy" if CSP_MODE == "enforce" else "Content-Security-Policy-Report-Only"
     resp.headers.setdefault(header, build_csp())
@@ -352,6 +354,32 @@ COMMON_PASSWORDS = {
 }
 
 
+PWNED_CHECK = os.environ.get("PWNED_CHECK", "on").lower() != "off"
+
+
+def password_is_pwned(password):
+    """Consulta Have I Been Pwned por rangos (k-anonimato): solo se envían los 5 primeros caracteres
+    del hash SHA-1, nunca la contraseña. Si el servicio no responde, no bloquea (falla abierta)."""
+    if not PWNED_CHECK:
+        return False
+    try:
+        digest = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+        prefix, suffix = digest[:5], digest[5:]
+        req = urllib.request.Request(
+            f"https://api.pwnedpasswords.com/range/{prefix}",
+            headers={"Add-Padding": "true", "User-Agent": "pangoa-generador-sobres"},
+        )
+        with urllib.request.urlopen(req, timeout=2.5) as resp:
+            body = resp.read(200000).decode("utf-8", "ignore")
+        for line in body.splitlines():
+            tail, _, count = line.partition(":")
+            if tail.strip() == suffix and count.strip() not in ("", "0"):
+                return True
+    except Exception:
+        return False
+    return False
+
+
 def validate_password(password, username=""):
     """Devuelve un mensaje de error o None si la contraseña es aceptable."""
     if len(password) < MIN_PASSWORD_LENGTH:
@@ -364,6 +392,8 @@ def validate_password(password, username=""):
         return "Esa contraseña es demasiado común o predecible. Elige otra."
     if username and len(username) >= 3 and username in low:
         return "La contraseña no debe contener el nombre de usuario."
+    if password_is_pwned(password):
+        return "Esa contraseña apareció en filtraciones de datos conocidas. Elige otra distinta."
     return None
 
 
