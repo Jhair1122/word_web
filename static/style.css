@@ -4,7 +4,7 @@
 .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 24px; align-items: center; padding-block: 36px 28px; }
 .hero-text { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
 .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
-.hero .scene { min-height: 320px; }
+.hero .scene { min-height: 380px; }
 
 .notice { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 14px 12px 18px; border-radius: 14px; background: color-mix(in srgb, var(--g-sun) 22%, var(--sheet)); font-size: 15px; }
 .notice > span { flex: 1; }
@@ -125,7 +125,8 @@ footer { padding: 28px 20px 40px; text-align: center; font-size: 13px; color: va
   .topnav .menu > summary { width: 100%; }
   .status-group { align-items: flex-start; }
   .form-actions button { flex: 1; }
-  .hero .scene { min-height: 220px; transform: scale(.78); margin-block: -20px; }
+  .hero .scene { min-height: 300px; margin-block: 28px 0; }
+  .chip3d.c1 { top: -2%; } .chip3d.c3 { bottom: 26%; }
   .chip3d { padding: 8px 12px; }
   .chip3d b { font-size: 20px; }
   .code-grid { grid-template-columns: 1fr; }
