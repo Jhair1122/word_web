@@ -88,6 +88,7 @@
   function setLive(caja, index, total) {
     var c = document.getElementById("sceneCaja"), p = document.getElementById("scenePage");
     if (c) c.textContent = caja ? "Caja " + caja : "Caja —";
+    document.querySelectorAll("[data-live-caja]").forEach(function (el) { el.textContent = caja ? "CAJA " + caja : "CAJA"; });
     if (p) p.textContent = "Página " + index + " de " + total;
     var top = document.querySelector(".sh.top");
     if (top && fxOn && lastIdx !== null && lastIdx !== index) {
