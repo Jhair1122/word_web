@@ -6,8 +6,11 @@
   <title>Administrar usuarios - Generador Pangoa</title>
   <link rel="icon" href="{{ url_for('static', filename='logo.jpg') }}">
   <meta name="color-scheme" content="light dark">
+  <meta name="supabase-url" content="{{ supabase_url }}">
+  <meta name="supabase-anon-key" content="{{ supabase_anon_key }}">
   <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='halloween.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
 </head>
 <body data-min-password="{{ min_password }}">
@@ -105,6 +108,7 @@
   </div>
 
   <script src="{{ url_for('static', filename='fx.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='halloween.js') }}" defer></script>
   <script type="module" src="{{ url_for('static', filename='admin.js') }}"></script>
 </body>
 </html>
