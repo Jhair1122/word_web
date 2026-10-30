@@ -297,7 +297,7 @@ function addItem(item = emptyItem()) {
   card.innerHTML = `
     <div class="item-card-header">
       <strong>Cuadro <span class="item-number"></span></strong>
-      <button type="button" class="remove-item secondary">Eliminar</button>
+      <button type="button" class="remove-item danger">Eliminar</button>
     </div>
     <div class="item-grid">
       <label>Sub serie
@@ -396,6 +396,7 @@ function updateHeroStats() {
   fx.countTo(document.getElementById("heroCajas"), cajas.size);
   fx.countTo(document.getElementById("heroItems"), items);
   fx.setSheets(pages.length);
+  if (fx.setLive) fx.setLive(String((normalizePage(pages[current] || {}).caja) || "").trim(), current + 1, pages.length);
   // singular / plural en las etiquetas de las cifras
   [["heroPages", pages.length, "página", "páginas"], ["heroCajas", cajas.size, "caja", "cajas"], ["heroItems", items, "cuadro", "cuadros"]]
     .forEach(([id, n, one, many]) => {
@@ -706,7 +707,7 @@ async function downloadWord() {
   if (downloading) return; // evita descargas dobles por doble clic
   downloading = true;
   const labels = downloadButtons.map(b => b.textContent);
-  downloadButtons.forEach(b => { b.disabled = true; b.textContent = "Generando..."; });
+  downloadButtons.forEach(b => { b.disabled = true; b.setAttribute("aria-busy", "true"); b.textContent = "Generando..."; });
 
   try {
     await saveCurrent();
@@ -755,7 +756,7 @@ async function downloadWord() {
   } catch (err) {
     showToast("No se pudo generar el documento. Revisa tu conexión e intenta de nuevo.", "error");
   } finally {
-    downloadButtons.forEach((b, i) => { b.disabled = false; b.textContent = labels[i]; });
+    downloadButtons.forEach((b, i) => { b.disabled = false; b.removeAttribute("aria-busy"); b.textContent = labels[i]; });
     downloading = false;
   }
 }
@@ -798,10 +799,15 @@ document.getElementById("loadJsonInput").addEventListener("change", async (event
 
 async function init() {
   setStatus("Cargando...", "⏳");
+  // esqueleto mientras llegan las páginas (se reemplaza solo al renderizar)
+  pagesList.setAttribute("aria-busy", "true");
+  pagesList.innerHTML = '<div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>';
   try {
     pages = await fetchPages();
   } catch {
     pages = [];
+    pagesList.innerHTML = "";
+    pagesList.removeAttribute("aria-busy");
     setStatus("No se pudo conectar. Intenta recargar la página.", "⚠️");
     return;
   }
@@ -812,6 +818,7 @@ async function init() {
   lastSavedSnapshot = JSON.stringify({ pages });
 
   fillForm(pages[current]);
+  pagesList.removeAttribute("aria-busy");
   renderPages();
   setStatus("Guardado en la nube", "✅");
 }
