@@ -226,13 +226,23 @@ function updateStats(usuarios) {
   set("statUsers", total - admins, "usuario normal", "usuarios normales");
 }
 
+let allUsers = [];
 function renderUsersTable(usuarios) {
+  allUsers = usuarios;
   updateStats(usuarios);
+  const searchEl = document.getElementById("userSearch");
+  if (searchEl) searchEl.hidden = usuarios.length < 6;
+  const q = ((searchEl && searchEl.value) || "").trim().toLowerCase();
   if (!usuarios.length) {
     usersTableWrap.innerHTML = `<p class="muted">No hay usuarios registrados.</p>`;
     return;
   }
-  const rows = usuarios.map(u => {
+  const shown = q ? usuarios.filter(u => String(u.username || "").toLowerCase().includes(q)) : usuarios;
+  if (!shown.length) {
+    usersTableWrap.innerHTML = `<p class="muted">Ningún usuario coincide con "${escapeHtml(q)}".</p>`;
+    return;
+  }
+  const rows = shown.map(u => {
     const isMe = u.id === currentUserId;
     return `
     <tr>
@@ -379,3 +389,5 @@ if (themeBtn) {
     syncTheme();
   });
 }
+
+document.getElementById("userSearch")?.addEventListener("input", () => renderUsersTable(allUsers));
