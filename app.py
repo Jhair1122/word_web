@@ -176,6 +176,12 @@ def build_csp():
     ])
 
 
+@app.context_processor
+def inject_public_config():
+    # Solo la URL y la clave anon (pública por diseño). Nunca la service_role.
+    return {"supabase_url": SUPABASE_URL or "", "supabase_anon_key": SUPABASE_ANON_KEY or ""}
+
+
 @app.after_request
 def add_security_headers(resp):
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
