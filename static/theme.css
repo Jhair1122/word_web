@@ -17,6 +17,10 @@
   --link: #0066cc;
   --danger: #c41230;
   --danger-bg: #fdecef;
+  --danger-solid: #d70015;
+  --danger-solid-hover: #b80012;
+  --success: #1f8a3b;
+  --success-bg: #e8f6ec;
   --tonal: rgb(0 0 0 / .05);
   --tonal-hover: rgb(0 0 0 / .09);
   --glass: rgb(245 245 247 / .72);
@@ -47,6 +51,10 @@
   --link: #2997ff;
   --danger: #ff7a85;
   --danger-bg: #3b1d22;
+  --danger-solid: #d92d3a;
+  --danger-solid-hover: #e8434f;
+  --success: #4cd27a;
+  --success-bg: #17301f;
   --tonal: rgb(255 255 255 / .09);
   --tonal-hover: rgb(255 255 255 / .15);
   --glass: rgb(11 11 14 / .72);
@@ -130,9 +138,18 @@ h1, h2, h3, p { margin: 0; }
 .primary:hover::after, .primary-btn:hover::after { left: 130%; transition: left .6s ease; }
 .secondary { background: transparent; color: var(--link); border-color: var(--link); }
 .secondary:hover { background: color-mix(in srgb, var(--link) 9%, transparent); }
-.danger { background: transparent; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
-.danger:hover { background: var(--danger-bg); border-color: var(--danger); }
+/* Color = significado. Azul: acción principal · Gris: neutral (Cancelar, Cerrar) · Rojo: destruye datos · Verde: confirmación de éxito */
+.danger { background: var(--danger-bg); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); font-weight: 500; }
+.danger:hover { background: var(--danger-solid); border-color: var(--danger-solid); color: #fff; }
+.danger-fill, .danger.danger-fill { background: var(--danger-solid); border-color: var(--danger-solid); color: #fff; }
+.danger-fill:hover, .danger.danger-fill:hover { background: var(--danger-solid-hover); border-color: var(--danger-solid-hover); }
+.success-fill { background: var(--success); color: #fff; border-color: var(--success); }
+.state-success { color: var(--success); }
+.danger:focus-visible, .danger-fill:focus-visible { outline-color: var(--danger-solid); }
+.modal-actions .secondary { background: var(--tonal); color: var(--ink); border-color: transparent; }
+.modal-actions .secondary:hover { background: var(--tonal-hover); }
 /* Acciones pequeñas y de menú: tono neutro para que el azul quede solo en lo importante */
+.item-card-header .danger, .row-actions .danger { min-height: 36px; padding: 0 16px; font-size: 14px; }
 .topnav .secondary, .menu > summary, .row-actions .secondary, .item-card-header .secondary, .modal-header .secondary, .sm {
   min-height: 36px; padding: 0 16px; font-size: 14px; background: var(--tonal); color: var(--ink); border-color: transparent;
 }
@@ -269,6 +286,38 @@ input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; margin: 0; ac
 .chip3d.c2 { right: 0; top: 38%; animation-delay: -2s; }
 .chip3d.c3 { left: 8%; bottom: 8%; animation-delay: -4s; }
 @keyframes chipFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+/* --- 3D v2: hoja con datos reales, brillo, profundidad por capas, giro de página y sello --- */
+.scene::before { content: ""; position: absolute; width: 320px; height: 320px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--blue) 24%, transparent), transparent);
+  translate: calc(var(--px, 0) * -24px) calc(var(--py, 0) * -16px); filter: blur(12px); transition: translate .3s ease-out; }
+.chip3d { --par: 14; translate: calc(var(--px, 0) * var(--par) * 1px) calc(var(--py, 0) * var(--par) * .7px); transition: translate .3s ease-out; }
+.chip3d.c1 { --par: 22; } .chip3d.c2 { --par: -18; } .chip3d.c3 { --par: 30; }
+.scene-shadow { translate: calc(var(--px, 0) * 10px) 0; transition: translate .3s ease-out; }
+.sh.top .live { margin: 14px 0 0; display: flex; flex-direction: column; gap: 2px; }
+.sh.top .live b { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; color: #1d1d1f; line-height: 1.15; }
+.sh.top .live span { font-size: 11px; color: #6e6e73; }
+.sh.top::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / .85) 50%, transparent 65%); transform: translateX(-120%); }
+[data-fx="on"] .sh.top::after { opacity: .55; animation: sheen 6s ease-in-out 1.2s infinite; }
+@keyframes sheen { 0%, 62% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+.sh.top { transform-origin: 50% 0; }
+.sh.top.flip { animation: flipTop .75s cubic-bezier(.3, .8, .3, 1); }
+@keyframes flipTop {
+  0% { transform: translateZ(calc(var(--under, 3) * 16px + 16px)) rotateX(0); }
+  45% { transform: translateZ(calc(var(--under, 3) * 16px + 70px)) rotateX(var(--flip, -62deg)); }
+  100% { transform: translateZ(calc(var(--under, 3) * 16px + 16px)) rotateX(0); }
+}
+.sh.top .stamp { position: absolute; right: 12px; bottom: 14px; padding: 4px 10px; border: 2px solid var(--g-leaf); border-radius: 8px;
+  color: var(--g-leaf); font: 700 13px/1 var(--font); letter-spacing: .1em; font-style: normal; opacity: 0; transform: rotate(-12deg) scale(2); pointer-events: none; }
+.sh.top .stamp.on { animation: stampIn 2.2s cubic-bezier(.2, .9, .3, 1.2) forwards; }
+@keyframes stampIn { 0% { opacity: 0; transform: rotate(-12deg) scale(2.2); } 18% { opacity: 1; transform: rotate(-12deg) scale(1); } 80% { opacity: 1; transform: rotate(-12deg) scale(1); } 100% { opacity: 0; transform: rotate(-12deg) scale(1); } }
+
+/* ---------- Carga: spinner en botones y esqueleto ---------- */
+button[aria-busy="true"]::before { content: ""; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.skeleton-row { height: 44px; border-radius: var(--r-field); margin-bottom: 8px; background: linear-gradient(100deg, var(--tonal) 30%, var(--tonal-hover) 50%, var(--tonal) 70%); background-size: 200% 100%; animation: skel 1.3s ease-in-out infinite; }
+@keyframes skel { to { background-position: -200% 0; } }
 
 /* ---------- Entradas animadas (solo si JS y movimiento permitido) ---------- */
 [data-fx="on"] [data-reveal] { opacity: 0; transform: translateY(22px); filter: blur(6px); transition: opacity .8s cubic-bezier(.2, .7, .2, 1), transform .8s cubic-bezier(.2, .7, .2, 1), filter .8s; transition-delay: var(--d, 0s); }
