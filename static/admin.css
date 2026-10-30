@@ -40,3 +40,4 @@
   .stat b { font-size: 30px; }
   .stat { padding: 14px; }
 }
+.search-input { margin: 0 0 12px; border-radius: var(--r-pill); padding-inline: 18px; }
