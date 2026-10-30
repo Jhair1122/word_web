@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Generador de sobres - Municipalidad Distrital de Pangoa</title>
   <meta name="color-scheme" content="light dark">
+  <meta name="supabase-url" content="{{ supabase_url }}">
+  <meta name="supabase-anon-key" content="{{ supabase_anon_key }}">
   <link rel="icon" href="{{ url_for('static', filename='logo.jpg') }}">
   <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='halloween.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -62,9 +65,15 @@
       <button type="button" class="secondary" data-proxy-click="importExcelBtn">Importar desde Excel</button>
     </div>
   </div>
-  <div class="scene" aria-hidden="true" data-reveal="3">
-    <div class="scene-shadow"></div>
-    <div class="scene-rig">
+  <div class="scene" data-reveal="3">
+    <div class="scene-shadow" aria-hidden="true"></div>
+    <div class="scene-rig" aria-hidden="true">
+        <div class="box">
+          <i class="bf floor"></i>
+          <i class="bf w-b"></i><i class="bf w-l"></i>
+          <i class="bf w-r"></i>
+          <i class="bf w-f"><em data-live-caja>CAJA</em></i>
+        </div>
       <div class="stack">
         <div class="sh"></div><div class="sh"></div><div class="sh"></div><div class="sh"></div><div class="sh"></div>
         <div class="sh top">
@@ -76,9 +85,10 @@
         </div>
       </div>
     </div>
-    <div class="chip3d c1"><b id="heroPages">0</b><span>páginas</span></div>
-    <div class="chip3d c2"><b id="heroCajas">0</b><span>cajas</span></div>
-    <div class="chip3d c3"><b id="heroItems">0</b><span>cuadros</span></div>
+    <div class="chip3d c1" title="Cada página que creas es una hoja del documento Word"><svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3v5h5M10 13h6M10 17h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><div><b id="heroPages">0</b><span>hojas</span><small>una por cada página</small></div></div>
+    <div class="chip3d c2" title="Cantidad de cajas de archivo distintas que usas"><svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l9-4 9 4v9l-9 4-9-4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3 8l9 4 9-4M12 12v9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><div><b id="heroCajas">0</b><span>cajas</span><small>de archivo en uso</small></div></div>
+    <div class="chip3d c3" title="Cada cuadro se convierte en una fila de la tabla del Word"><svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 10h17M3.5 15h17M10 4.5v15" fill="none" stroke="currentColor" stroke-width="1.7"/></svg><div><b id="heroItems">0</b><span>cuadros</span><small>filas de contenido</small></div></div>
+    <p class="scene-caption">Cada página que creas es una hoja dentro de su caja de archivo.</p>
   </div>
 </section>
 
@@ -286,6 +296,7 @@
 </div>
 
 <script src="{{ url_for('static', filename='fx.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='halloween.js') }}" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script type="module" src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
