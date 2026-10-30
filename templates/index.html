@@ -69,8 +69,10 @@
         <div class="sh"></div><div class="sh"></div><div class="sh"></div><div class="sh"></div><div class="sh"></div>
         <div class="sh top">
           <div class="band"><img src="{{ url_for('static', filename='logo.jpg') }}" alt=""></div>
+          <p class="live"><b id="sceneCaja">Caja —</b><span id="scenePage">Página 1 de 1</span></p>
           <div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div>
           <div class="cell"><b></b><b></b></div>
+          <i class="stamp">LISTO ✓</i>
         </div>
       </div>
     </div>
@@ -103,7 +105,7 @@
           <input name="id" autocomplete="off">
         </label>
         <label>N° de caja
-          <input name="caja" value="12" autocomplete="off">
+          <input name="caja" value="12" autocomplete="off" inputmode="numeric" enterkeyhint="next">
         </label>
         <label>Cod. serie
           <input name="cod_serie" autocomplete="off">
@@ -121,15 +123,15 @@
           <input name="serie_doc" value="COMPROBANTE DE PAGO" autocomplete="off">
         </label>
         <label>Año / fechas extremas
-          <input name="anio" value="2019" maxlength="4" inputmode="numeric">
+          <input name="anio" value="2019" maxlength="4" inputmode="numeric" enterkeyhint="next" placeholder="aaaa">
         </label>
       </div>
 
       <div class="grid grid--dates">
-        <label>Fecha inicio
+        <label>Fecha inicio <small class="hint-inline">(dd/mm/aaaa)</small>
           <input type="date" name="fecha_inicio">
         </label>
-        <label>Fecha final
+        <label>Fecha final <small class="hint-inline">(dd/mm/aaaa)</small>
           <input type="date" name="fecha_final">
         </label>
       </div>
@@ -168,7 +170,7 @@
       <span id="pageCount" class="count">1</span>
     </div>
 
-    <input type="search" id="pageSearch" class="search-input" placeholder="Buscar sobre o sub serie (ej.: 15)" aria-label="Buscar páginas por N° de sobre o sub serie" autocomplete="off">
+    <input type="search" inputmode="search" enterkeyhint="search" id="pageSearch" class="search-input" placeholder="Buscar sobre o sub serie (ej.: 15)" aria-label="Buscar páginas por N° de sobre o sub serie" autocomplete="off">
     <p class="help-text drag-hint">Busca por N° de sobre o Sub serie (revisa todos los cuadros). Arrastra una página para reordenarla; al buscar no se puede arrastrar.</p>
 
     <div id="pagesList" class="pages-list"></div>
@@ -194,7 +196,7 @@
     <p id="confirmMessage"></p>
     <div class="modal-actions">
       <button type="button" id="confirmCancelBtn" class="secondary">Cancelar</button>
-      <button type="button" id="confirmOkBtn" class="danger">Eliminar</button>
+      <button type="button" id="confirmOkBtn" class="danger danger-fill">Eliminar</button>
     </div>
   </div>
 </div>
@@ -237,7 +239,7 @@
 
       <div class="modal-actions modal-actions--split">
         <button type="button" id="importAppendBtn" class="secondary">Agregar al final</button>
-        <button type="button" id="importReplaceBtn" class="danger">Reemplazar todo</button>
+        <button type="button" id="importReplaceBtn" class="danger danger-fill">Reemplazar todo</button>
       </div>
     </div>
   </div>
