@@ -1,34 +1,45 @@
-/* Decoración de Halloween (solo visual). Todo cuelga de .hw-layer y .hw-deco, que crea halloween.js */
+/* Decoración de Halloween (solo visual). Todo cuelga de .hw-layer (capa fija) y .hw-deco (escena), que crea halloween.js */
 :root { --hw-web: rgb(70 50 100 / .5); --hw-web-main: rgb(70 50 100 / .62); --hw-leg: #2b1946; --hw-leg-hi: rgb(255 255 255 / .22); --hw-bat: #24143a; }
 [data-theme="dark"] { --hw-web: rgb(255 255 255 / .34); --hw-web-main: rgb(255 255 255 / .46); --hw-leg: #5b3d8a; --hw-leg-hi: rgb(255 255 255 / .3); --hw-bat: #3a2458; }
 .hw-defs-wrap { position: absolute; width: 0; height: 0; overflow: hidden; }
-.hw-layer { position: absolute; left: 0; right: 0; overflow: hidden; pointer-events: none; z-index: 3; }
+
+/* Capa FIJA: sigue visible al bajar la página. "top" lo fija el script (debajo del menú) */
+.hw-layer { position: fixed; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; z-index: 3; }
 .hw-layer *, .hw-deco * { pointer-events: none; }
 
-/* Telarañas */
-.hw-web { position: absolute; top: 0; }
-.hw-web-l { left: 0; }
-.hw-web-r { right: 0; transform: scaleX(-1); }
-.hw-web-svg { display: block; overflow: visible; transform-origin: 0 0; animation: hwWebSway 7s ease-in-out infinite; }
-.hw-web-r .hw-web-svg { animation-delay: -3s; }
+/* Telarañas (la derecha ya viene dibujada en espejo) */
+.hw-web { position: absolute; top: 0; transition: transform .6s cubic-bezier(.3, .7, .2, 1), opacity .6s; }
+.hw-web-l { left: 0; transform-origin: 0 0; }
+.hw-web-r { right: 0; transform-origin: 100% 0; }
+.hw-web-svg { display: block; overflow: visible; animation: hwWebSway 7s ease-in-out infinite; }
+.hw-web-l .hw-web-svg { transform-origin: 0 0; }
+.hw-web-r .hw-web-svg { transform-origin: 100% 0; animation-delay: -3s; }
+.hw-layer.is-scrolled .hw-web { transform: scale(.58); opacity: .85; }
 .hw-web-ring { stroke: var(--hw-web); stroke-width: .9; stroke-linecap: round; }
 .hw-web-main { stroke: var(--hw-web-main); stroke-width: 1.5; stroke-linecap: round; }
 @keyframes hwWebSway { 0%, 100% { transform: rotate(-.7deg); } 50% { transform: rotate(.9deg); } }
 
-/* Araña y su hilo */
+/* Araña 3D: cada pata y el cuerpo son capas a distinta profundidad */
 .hw-spider, .hw-bat { position: absolute; overflow: visible; }
-.hw-spider { top: 0; }
+.hw-spider { top: 0; transition: left .6s cubic-bezier(.3, .7, .2, 1); }
+.sp-thr { position: absolute; left: 0; top: 0; overflow: visible; }
+.sp-stage { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.sp-3d { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; transform-origin: 0 0; will-change: transform; }
+.sp-l { position: absolute; left: -70px; top: 0; width: 140px; height: 120px; overflow: visible; backface-visibility: visible; will-change: transform; }
 .hw-knot { fill: var(--hw-web-main); }
 .hw-thread { stroke: var(--hw-web-main); stroke-width: 1.2; stroke-linecap: round; }
-.sp-leg { stroke: var(--hw-leg); stroke-linecap: round; }
+.sp-leg { stroke: var(--hw-leg); stroke-linecap: round; fill: none; }
 .sp-leg.l1 { stroke-width: 3.4; } .sp-leg.l2 { stroke-width: 2.6; } .sp-leg.l3 { stroke-width: 1.6; }
 .sp-hi { stroke: var(--hw-leg-hi); stroke-width: .7; stroke-linecap: round; }
 .sp-joint { fill: var(--hw-leg); stroke: var(--hw-leg-hi); stroke-width: .4; }
 .sp-body { stroke: rgb(255 150 60 / .4); stroke-width: .6; }
 
-/* Murciélagos */
-.hw-bat { left: 0; top: 0; visibility: hidden; will-change: transform; }
+/* Murciélagos 3D: dos alas y cuerpo en capas; las alas barren hacia el espectador */
+.hw-bat { left: 0; top: 0; width: 0; height: 0; visibility: hidden; will-change: transform; }
+.bt-3d { position: absolute; left: -60px; top: -45px; width: 120px; height: 110px; transform-style: preserve-3d; transform-origin: 50% 41%; will-change: transform; }
+.bt-l { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .bat-mem { fill: var(--hw-bat); stroke: rgb(255 150 60 / .5); stroke-width: .6; stroke-linejoin: round; }
+.bat-shade { fill: #07020f; stroke: none; }
 .bat-bone { stroke: rgb(255 255 255 / .22); stroke-width: .7; stroke-linecap: round; }
 .bat-arm { stroke: var(--hw-bat); stroke-width: 2.6; stroke-linecap: round; }
 .bat-body { stroke: rgb(255 150 60 / .4); stroke-width: .5; }
@@ -47,12 +58,19 @@
 .pk-shadow { position: absolute; left: 6%; right: 6%; bottom: -3%; height: 9%; border-radius: 50%; background: radial-gradient(closest-side, rgb(0 0 0 / .42), transparent); }
 [data-theme="dark"] .pk-glow { opacity: 1; }
 
-.hw-ghost { --par: -18; right: 24%; top: -2%; width: 58px; height: 76px; }
+/* Calabaza de esquina (capa fija): asoma abajo a la derecha */
+.hw-layer > .hw-pumpkin.corner { position: absolute; right: 18px; bottom: 10px; }
+.hw-layer.is-scrolled > .hw-pumpkin.corner { opacity: .95; }
+
+.hw-deco .hw-ghost { --par: -18; right: 24%; top: -2%; }
+.hw-ghost { width: 58px; height: 76px; }
+.hw-layer > .hw-ghost.wander { position: absolute; left: 0; top: 0; visibility: hidden; will-change: transform; }
 .gh-stage { position: absolute; inset: 0; perspective: 420px; }
 .gh-body { position: absolute; inset: 0; transform-style: preserve-3d; }
 .gh-l { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .gh-aura { position: absolute; left: -60%; top: -40%; width: 220%; height: 190%; background: radial-gradient(closest-side, rgb(190 160 255 / .55), transparent 70%); }
 .gh-shadow { position: absolute; left: 10%; right: 10%; top: 135%; height: 8px; border-radius: 50%; background: radial-gradient(closest-side, rgb(60 40 110 / .35), transparent); }
+.hw-layer > .hw-ghost.wander .gh-shadow { display: none; }
 .gh-orb { position: absolute; left: 46%; top: 70%; width: 5px; height: 5px; border-radius: 50%; background: #e6dcff; box-shadow: 0 0 8px 2px rgb(200 175 255 / .8); opacity: 0; }
 
 /* Tinte suave de Halloween */
@@ -64,7 +82,8 @@
 
 @media (max-width: 900px) {
   .hw-pumpkin.big { width: 80px !important; height: 76px !important; }
-  .hw-pumpkin.small, .hw-ghost { display: none; }
+  .hw-pumpkin.small, .hw-deco .hw-ghost { display: none; }
+  .hw-layer > .hw-pumpkin.corner { right: 8px; bottom: 8px; }
 }
-@media (prefers-reduced-motion: reduce) { .hw-web-svg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hw-web-svg { animation: none; } .hw-web, .hw-spider { transition: none; } }
 #halloweenToggleBtn.link-btn { margin-left: 16px; }
