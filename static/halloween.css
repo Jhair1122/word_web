@@ -19,59 +19,32 @@
 .hw-web-main { stroke: var(--hw-web-main); stroke-width: 1.5; stroke-linecap: round; }
 @keyframes hwWebSway { 0%, 100% { transform: rotate(-.7deg); } 50% { transform: rotate(.9deg); } }
 
-/* Araña 3D: cada pata y el cuerpo son capas a distinta profundidad */
-.hw-spider, .hw-bat { position: absolute; overflow: visible; }
-.hw-spider { top: 0; transition: left .6s cubic-bezier(.3, .7, .2, 1); }
+/* Araña: solo el hilo es SVG; el cuerpo y las patas son 3D real en el canvas */
+.hw-spider { position: absolute; top: 0; width: 0; height: 0; overflow: visible; transition: left .6s cubic-bezier(.3, .7, .2, 1); }
 .sp-thr { position: absolute; left: 0; top: 0; overflow: visible; }
-.sp-stage { position: absolute; left: 0; top: 0; width: 0; height: 0; }
-.sp-3d { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; transform-origin: 0 0; will-change: transform; }
-.sp-l { position: absolute; left: -70px; top: 0; width: 140px; height: 120px; overflow: visible; backface-visibility: visible; will-change: transform; }
 .hw-knot { fill: var(--hw-web-main); }
 .hw-thread { stroke: var(--hw-web-main); stroke-width: 1.2; stroke-linecap: round; }
-.sp-leg { stroke: var(--hw-leg); stroke-linecap: round; fill: none; }
-.sp-leg.l1 { stroke-width: 3.4; } .sp-leg.l2 { stroke-width: 2.6; } .sp-leg.l3 { stroke-width: 1.6; }
-.sp-hi { stroke: var(--hw-leg-hi); stroke-width: .7; stroke-linecap: round; }
-.sp-joint { fill: var(--hw-leg); stroke: var(--hw-leg-hi); stroke-width: .4; }
-.sp-body { stroke: rgb(255 150 60 / .4); stroke-width: .6; }
 
-/* Murciélagos 3D: dos alas y cuerpo en capas; las alas barren hacia el espectador */
-.hw-bat { left: 0; top: 0; width: 0; height: 0; visibility: hidden; will-change: transform; }
-.bt-3d { position: absolute; left: -60px; top: -45px; width: 120px; height: 110px; transform-style: preserve-3d; transform-origin: 50% 41%; will-change: transform; }
-.bt-l { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.bat-mem { fill: var(--hw-bat); stroke: rgb(255 150 60 / .5); stroke-width: .6; stroke-linejoin: round; }
-.bat-shade { fill: #07020f; stroke: none; }
-.bat-bone { stroke: rgb(255 255 255 / .22); stroke-width: .7; stroke-linecap: round; }
-.bat-arm { stroke: var(--hw-bat); stroke-width: 2.6; stroke-linecap: round; }
-.bat-body { stroke: rgb(255 150 60 / .4); stroke-width: .5; }
-.bat-eye { fill: #ff7a1a; }
+/* Canvas WebGL: dibuja todas las figuras 3D (araña, murciélagos, calabazas, fantasmas) */
+.hw-gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-/* Calabazas y fantasma junto a la escena 3D */
+/* Soportes de las figuras (el 3D se dibuja encima): resplandor, suelo y sombra */
 .hw-deco { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .hw-deco > * { position: absolute; translate: calc(var(--px, 0) * var(--par, 10) * 1px) calc(var(--py, 0) * var(--par, 10) * .6px); transition: translate .3s ease-out; }
 .hw-pumpkin.big { --par: 26; right: 6%; bottom: 8%; }
 .hw-pumpkin.small { --par: 40; left: 22%; bottom: 3%; }
-.pk-stage { position: absolute; inset: 0; perspective: 560px; perspective-origin: 50% 35%; }
-.pk-body { position: absolute; inset: 0; transform-style: preserve-3d; transform-origin: 50% 88%; will-change: transform; }
-.pk-l { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .pk-glow { position: absolute; left: -35%; top: -25%; width: 170%; height: 160%; background: radial-gradient(closest-side, rgb(255 150 30 / .4), transparent 72%); }
-.pk-floor { position: absolute; left: -25%; right: -25%; bottom: -18%; height: 34%; background: radial-gradient(closest-side, rgb(255 160 40 / .5), transparent 75%); }
-.pk-shadow { position: absolute; left: 6%; right: 6%; bottom: -3%; height: 9%; border-radius: 50%; background: radial-gradient(closest-side, rgb(0 0 0 / .42), transparent); }
+.pk-floor { position: absolute; left: -25%; right: -25%; bottom: -14%; height: 30%; background: radial-gradient(closest-side, rgb(255 160 40 / .5), transparent 75%); }
+.pk-shadow { position: absolute; left: 6%; right: 6%; bottom: -2%; height: 9%; border-radius: 50%; background: radial-gradient(closest-side, rgb(0 0 0 / .42), transparent); }
 [data-theme="dark"] .pk-glow { opacity: 1; }
+.hw-layer > .hw-pumpkin.corner { position: absolute; right: 18px; bottom: 12px; }
 
-/* Calabaza de esquina (capa fija): asoma abajo a la derecha */
-.hw-layer > .hw-pumpkin.corner { position: absolute; right: 18px; bottom: 10px; }
-.hw-layer.is-scrolled > .hw-pumpkin.corner { opacity: .95; }
-
-.hw-deco .hw-ghost { --par: -18; right: 24%; top: -2%; }
-.hw-ghost { width: 58px; height: 76px; }
+.hw-deco .hw-ghost { --par: -18; right: 34%; top: -4%; }
+.hw-ghost { width: 80px; height: 104px; }
 .hw-layer > .hw-ghost.wander { position: absolute; left: 0; top: 0; visibility: hidden; will-change: transform; }
-.gh-stage { position: absolute; inset: 0; perspective: 420px; }
-.gh-body { position: absolute; inset: 0; transform-style: preserve-3d; }
-.gh-l { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.gh-aura { position: absolute; left: -60%; top: -40%; width: 220%; height: 190%; background: radial-gradient(closest-side, rgb(190 160 255 / .55), transparent 70%); }
-.gh-shadow { position: absolute; left: 10%; right: 10%; top: 135%; height: 8px; border-radius: 50%; background: radial-gradient(closest-side, rgb(60 40 110 / .35), transparent); }
+.gh-aura { position: absolute; left: -60%; top: -40%; width: 220%; height: 190%; background: radial-gradient(closest-side, rgb(190 160 255 / .5), transparent 70%); }
+.gh-shadow { position: absolute; left: 10%; right: 10%; top: 128%; height: 8px; border-radius: 50%; background: radial-gradient(closest-side, rgb(60 40 110 / .3), transparent); }
 .hw-layer > .hw-ghost.wander .gh-shadow { display: none; }
-.gh-orb { position: absolute; left: 46%; top: 70%; width: 5px; height: 5px; border-radius: 50%; background: #e6dcff; box-shadow: 0 0 8px 2px rgb(200 175 255 / .8); opacity: 0; }
 
 /* Tinte suave de Halloween */
 [data-halloween="on"] .ambient i:nth-child(1) { background: #ff8a1f; }
