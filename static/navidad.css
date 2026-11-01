@@ -1,0 +1,122 @@
+/* Decoración navideña (solo visual, 2D). Todo cuelga de .xm-layer (capa fija) y .xm-deco (escena), que crea navidad.js */
+.xm-defs-wrap { position: absolute; width: 0; height: 0; overflow: hidden; }
+.xm-layer { position: fixed; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; z-index: 3; }
+.xm-layer *, .xm-deco * { pointer-events: none; }
+.xm-snow { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* Guirnalda y luces */
+.xm-garland { position: absolute; left: 0; top: 0; overflow: visible; filter: drop-shadow(0 2px 3px rgb(20 40 30 / .22)); }
+.xm-layer .xm-bulb, .xm-layer .xm-bulb * { pointer-events: all; cursor: pointer; }
+.xm-bi { transform-origin: 0 2px; }
+.xm-glow { transform-box: fill-box; transform-origin: 50% 50%; animation: xmTw 2.4s ease-in-out infinite alternate; }
+@keyframes xmTw { from { opacity: .3; transform: scale(.85); } to { opacity: .95; transform: scale(1.12); } }
+.xm-bulb.xm-flash .xm-glow { animation: none; opacity: 1; transform: scale(1.9); }
+.xm-bulb.xm-flash .xm-body { filter: brightness(1.45) saturate(1.2); }
+.xm-bulb.xm-pop .xm-bi { animation: xmBulbPop .6s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes xmBulbPop { 0% { transform: scale(1) rotate(0); } 35% { transform: scale(1.5) rotate(-10deg); } 70% { transform: scale(.92) rotate(6deg); } 100% { transform: scale(1) rotate(0); } }
+
+/* Adornos colgantes */
+.xm-layer .xm-hang { position: absolute; transform-origin: 50% 0; animation: xmSwing var(--sd, 3.6s) ease-in-out infinite alternate; pointer-events: none; }
+.xm-layer .xm-hang svg * { pointer-events: visiblePainted; cursor: pointer; }
+.xm-hs { display: block; overflow: visible; filter: drop-shadow(0 3px 3px rgb(20 30 50 / .22)); }
+@keyframes xmSwing { from { transform: rotate(calc(var(--sw, 3deg) * -1)); } to { transform: rotate(var(--sw, 3deg)); } }
+.xm-layer .xm-hang.xm-ring { animation: xmRing 2s ease-out; }
+@keyframes xmRing { 0% { transform: rotate(0); } 12% { transform: rotate(-24deg); } 28% { transform: rotate(18deg); } 44% { transform: rotate(-12deg); } 60% { transform: rotate(7deg); } 76% { transform: rotate(-3deg); } 100% { transform: rotate(0); } }
+
+/* Árbol */
+.xm-deco { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.xm-deco > * { position: absolute; }
+.xm-deco .xm-tree-w { right: 3%; bottom: 5%; width: 132px; cursor: pointer; pointer-events: auto; }
+.xm-deco .xm-gifts-w { right: calc(3% + 120px); bottom: 3%; width: 100px; }
+.xm-tree, .xm-gifts, .xm-sm { display: block; width: 100%; height: auto; overflow: visible; }
+.xm-tree { transform-origin: 50% 100%; filter: drop-shadow(0 6px 6px rgb(20 40 60 / .2)); }
+.xm-deco .xm-tree-w * { pointer-events: none; }
+.xm-tl { animation: xmTw2 1.9s ease-in-out infinite alternate; }
+@keyframes xmTw2 { from { opacity: .35; } to { opacity: 1; } }
+.xm-orn { transform-box: fill-box; transform-origin: 50% 0; animation: xmOrn 3.4s ease-in-out infinite alternate; }
+@keyframes xmOrn { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+.xm-star { transform-box: fill-box; transform-origin: 50% 55%; animation: xmStar 2.6s ease-in-out infinite alternate; }
+@keyframes xmStar { from { transform: scale(.96) rotate(-3deg); } to { transform: scale(1.08) rotate(3deg); } }
+.xm-halo { animation: xmHalo 2.6s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 50%; }
+@keyframes xmHalo { from { opacity: .4; transform: scale(.85); } to { opacity: 1; transform: scale(1.2); } }
+.xm-tree.xm-shake { animation: xmShake 1.5s ease-out; }
+@keyframes xmShake { 0% { transform: rotate(0); } 10% { transform: rotate(-3.4deg); } 24% { transform: rotate(3deg); } 40% { transform: rotate(-2deg); } 58% { transform: rotate(1.2deg); } 78% { transform: rotate(-.5deg); } 100% { transform: rotate(0); } }
+.xm-tree.xm-flashT .xm-tl { animation: xmTw2 .22s linear infinite alternate; filter: brightness(1.5); }
+.xm-tree.xm-flashT .xm-orn { animation: xmOrnHard .4s ease-in-out infinite alternate; }
+.xm-tree.xm-flashT .xm-halo { animation-duration: .4s; }
+@keyframes xmOrnHard { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
+
+/* Regalos */
+.xm-deco .xm-gift, .xm-deco .xm-gift * { pointer-events: all; cursor: pointer; }
+.xm-gift { transform-box: fill-box; transform-origin: 50% 100%; animation: xmGiftHop var(--wd, 8s) ease-in-out infinite; }
+@keyframes xmGiftHop { 0%, 86%, 100% { transform: none; } 90% { transform: translateY(-4px) rotate(-3deg); } 94% { transform: translateY(0) rotate(3deg); } 97% { transform: translateY(-1.5px) rotate(-1deg); } }
+.xm-gift .lid { transform-box: fill-box; transform-origin: 0 100%; transition: transform .38s cubic-bezier(.3, 1.6, .5, 1); }
+.xm-gift.open { animation: none; }
+.xm-gift.open .lid { transform: translateY(-15px) rotate(-16deg); }
+.xm-gift .beam { opacity: 0; transition: opacity .3s; }
+.xm-gift.open .beam { opacity: .95; }
+
+/* Muñeco de nieve */
+.xm-layer .xm-snowman { position: absolute; right: 10px; bottom: 4px; width: 78px; cursor: pointer; pointer-events: auto; }
+.xm-layer .xm-snowman * { pointer-events: none; }
+.xm-sm { transform-origin: 50% 100%; animation: xmSway 4.6s ease-in-out infinite alternate; filter: drop-shadow(0 4px 4px rgb(20 40 60 / .22)); }
+@keyframes xmSway { from { transform: rotate(-1.4deg); } to { transform: rotate(1.4deg); } }
+.xm-arm { transform-box: fill-box; }
+.xm-arm-l { transform-origin: 100% 100%; animation: xmArmL 3.2s ease-in-out infinite alternate; }
+.xm-arm-r { transform-origin: 0 100%; animation: xmArmR 2.7s ease-in-out infinite alternate; }
+@keyframes xmArmL { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+@keyframes xmArmR { from { transform: rotate(6deg); } to { transform: rotate(-6deg); } }
+.xm-snowman.wave .xm-arm-r { animation: xmWave .32s ease-in-out infinite alternate; }
+@keyframes xmWave { from { transform: rotate(4deg); } to { transform: rotate(-30deg); } }
+.xm-scarf-tail { transform-box: fill-box; transform-origin: 0 0; animation: xmScarf 2.2s ease-in-out infinite alternate; }
+@keyframes xmScarf { from { transform: rotate(-5deg); } to { transform: rotate(9deg); } }
+.xm-eyes { transform-box: fill-box; transform-origin: 50% 50%; animation: xmBlink 5.4s infinite; }
+@keyframes xmBlink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+.xm-hat { transform-box: fill-box; transform-origin: 0 100%; transition: transform .3s cubic-bezier(.3, 1.5, .5, 1); }
+.xm-snowman.tip .xm-hat { transform: translate(-4px, -11px) rotate(-22deg); }
+
+/* Trineo de Papá Noel */
+.xm-layer .xm-sleigh { position: absolute; left: 0; top: 0; visibility: hidden; cursor: pointer; pointer-events: auto; will-change: transform; }
+.xm-layer .xm-sleigh * { pointer-events: none; }
+.xm-sl-in { width: 100%; height: 100%; }
+.xm-sl-svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 6px 6px rgb(20 30 60 / .25)); }
+.xm-leg { transform-box: fill-box; transform-origin: 50% 0; animation: xmGallop .46s ease-in-out infinite alternate; }
+.xm-leg.l2 { animation-direction: alternate-reverse; }
+@keyframes xmGallop { from { transform: rotate(-26deg); } to { transform: rotate(26deg); } }
+.xm-santa-arm { transform-box: fill-box; transform-origin: 0 100%; animation: xmSantaArm .55s ease-in-out infinite alternate; }
+@keyframes xmSantaArm { from { transform: rotate(-12deg); } to { transform: rotate(16deg); } }
+.xm-nose { animation: xmNose 1s ease-in-out infinite alternate; }
+@keyframes xmNose { from { opacity: .45; } to { opacity: 1; } }
+
+/* Efectos al hacer clic */
+.xm-fx { position: fixed; inset: 0; pointer-events: none; z-index: 6; overflow: hidden; }
+.xm-p { position: absolute; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); transform: translate(-50%, -50%); animation: xmSpark 1s ease-out forwards; }
+@keyframes xmSpark { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.3); } 60% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--r)) scale(1.1); } }
+.xm-c { position: absolute; border-radius: 1px; transform: translate(-50%, -50%); animation: xmConf 1.2s cubic-bezier(.2, .7, .4, 1) forwards; }
+@keyframes xmConf { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.4); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 110px)) rotate(var(--r)) scale(1); } }
+.xm-bubble { position: absolute; transform: translate(-50%, -100%); padding: 8px 14px; border-radius: 980px; background: #fff; color: #b81d2e; font: 600 14px/1.2 var(--font, system-ui); white-space: nowrap; box-shadow: 0 8px 24px rgb(20 30 60 / .22); animation: xmBub .35s cubic-bezier(.3, 1.6, .5, 1); transition: opacity .45s, margin-top .45s; }
+.xm-bubble::after { content: ""; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: inherit; transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
+.xm-bubble.out { opacity: 0; margin-top: -10px; }
+[data-theme="dark"] .xm-bubble { background: #26262c; color: #ffd9de; }
+@keyframes xmBub { from { opacity: 0; transform: translate(-50%, -80%) scale(.7); } to { opacity: 1; transform: translate(-50%, -100%) scale(1); } }
+.xm-drop { position: absolute; transform: translate(-50%, 0); animation: xmFall 1.4s cubic-bezier(.4, 0, .9, .6) forwards; }
+@keyframes xmFall { 0% { transform: translate(-50%, 0) rotate(0); opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(-50%, 240px) rotate(var(--rot)); opacity: 0; } }
+.xm-dg { display: block; filter: drop-shadow(0 3px 3px rgb(20 30 50 / .25)); }
+
+[data-navidad="on"] #recoveryBanner { margin-top: 64px; }
+
+/* Tinte suave de Navidad */
+[data-navidad="on"] .ambient i:nth-child(1) { background: #ff5a5f; }
+[data-navidad="on"] .ambient i:nth-child(2) { background: #34c27a; }
+[data-navidad="on"] .ambient i:nth-child(3) { background: #ffd166; opacity: .26; }
+[data-navidad="on"] .display .grad { background-image: linear-gradient(100deg, #e03545, #f5a623 40%, #2eaa68 80%, #1f8f55); }
+[data-navidad="on"] .sh .band { background: linear-gradient(100deg, #e03545, #f5c04a 50%, #2eaa68); }
+
+@media (max-width: 900px) {
+  .xm-deco .xm-tree-w { width: 92px; right: 2%; }
+  .xm-deco .xm-gifts-w { width: 76px; right: calc(2% + 84px); bottom: 3%; }
+  .xm-layer .xm-snowman { width: 56px; right: 6px; }
+}
+html[data-fx="off"] .xm-layer *, html[data-fx="off"] .xm-deco * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .xm-layer *, .xm-deco * { animation: none !important; } }
+#navidadToggleBtn.link-btn { margin-left: 16px; }
