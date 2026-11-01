@@ -14,7 +14,7 @@
   // ---------- utilidades ----------
   function guardado() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
   function guardar(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
-  function enTemporada() { var d = new Date(), m = d.getMonth(), n = d.getDate(); return (m === 9 && n >= 24) || (m === 10 && n <= 2); }
+  function enTemporada() { var d = new Date(), m = d.getMonth(), n = d.getDate(); return m === 9 && n >= 24; }
   function activo() { var g = guardado(); return g === null ? enTemporada() : g === "on"; }
   function animar() { return root.getAttribute("data-fx") === "on"; }
   function S(tag, attrs, parent) {
@@ -922,7 +922,10 @@
     boton.addEventListener("click", function () {
       var on = !!document.querySelector(".hw-layer");
       guardar(on ? "off" : "on");
-      if (on) desmontar(); else montar();
+      if (on) desmontar(); else {
+        if (window.PangoaNavidad && document.querySelector(".xm-layer")) { try { localStorage.setItem("pangoa_navidad", "off"); } catch (e) {} window.PangoaNavidad.desmontar(); }
+        montar();
+      }
     });
     tema.parentNode.insertBefore(boton, tema.nextSibling);
     actualizarBoton();
