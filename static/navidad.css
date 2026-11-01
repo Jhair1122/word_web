@@ -8,12 +8,11 @@
 .xm-garland { position: absolute; left: 0; top: 0; overflow: visible; filter: drop-shadow(0 2px 3px rgb(20 40 30 / .22)); }
 .xm-layer .xm-bulb, .xm-layer .xm-bulb * { pointer-events: all; cursor: pointer; }
 .xm-bi { transform-origin: 0 2px; }
-.xm-glow { transform-box: fill-box; transform-origin: 50% 50%; animation: xmTw 2.4s ease-in-out infinite alternate; }
-@keyframes xmTw { from { opacity: .3; transform: scale(.85); } to { opacity: .95; transform: scale(1.12); } }
-.xm-bulb.xm-flash .xm-glow { animation: none; opacity: 1; transform: scale(1.9); }
-.xm-bulb.xm-flash .xm-body { filter: brightness(1.45) saturate(1.2); }
-.xm-bulb.xm-pop .xm-bi { animation: xmBulbPop .6s cubic-bezier(.3, 1.6, .5, 1); }
-@keyframes xmBulbPop { 0% { transform: scale(1) rotate(0); } 35% { transform: scale(1.5) rotate(-10deg); } 70% { transform: scale(.92) rotate(6deg); } 100% { transform: scale(1) rotate(0); } }
+.xm-glow { transform-box: fill-box; transform-origin: 50% 50%; }
+.xm-bulb.xm-pop .xm-bi { animation: xmBulbPop 1.3s ease-out; }
+@keyframes xmBulbPop { 0% { transform: scale(1) rotate(0); } 12% { transform: scale(1.5) rotate(-22deg); } 30% { transform: scale(1.1) rotate(18deg); } 48% { transform: scale(1) rotate(-11deg); } 66% { transform: rotate(6deg); } 84% { transform: rotate(-2deg); } 100% { transform: scale(1) rotate(0); } }
+.xm-bulb.xm-sw .xm-bi { animation: xmBulbSw 1.5s ease-out; }
+@keyframes xmBulbSw { 0% { transform: rotate(0); } 18% { transform: rotate(calc(var(--dir, 1) * var(--a, 10deg))); } 38% { transform: rotate(calc(var(--dir, 1) * var(--a, 10deg) * -.6)); } 58% { transform: rotate(calc(var(--dir, 1) * var(--a, 10deg) * .32)); } 78% { transform: rotate(calc(var(--dir, 1) * var(--a, 10deg) * -.12)); } 100% { transform: rotate(0); } }
 
 /* Adornos colgantes */
 .xm-layer .xm-hang { position: absolute; transform-origin: 50% 0; animation: xmSwing var(--sd, 3.6s) ease-in-out infinite alternate; pointer-events: none; }
@@ -21,7 +20,12 @@
 .xm-hs { display: block; overflow: visible; filter: drop-shadow(0 3px 3px rgb(20 30 50 / .22)); }
 @keyframes xmSwing { from { transform: rotate(calc(var(--sw, 3deg) * -1)); } to { transform: rotate(var(--sw, 3deg)); } }
 .xm-layer .xm-hang.xm-ring { animation: xmRing 2s ease-out; }
-@keyframes xmRing { 0% { transform: rotate(0); } 12% { transform: rotate(-24deg); } 28% { transform: rotate(18deg); } 44% { transform: rotate(-12deg); } 60% { transform: rotate(7deg); } 76% { transform: rotate(-3deg); } 100% { transform: rotate(0); } }
+@keyframes xmRing { 0% { transform: rotate(0); } 12% { transform: rotate(calc(var(--dir, 1) * -26deg)); } 28% { transform: rotate(calc(var(--dir, 1) * 19deg)); } 44% { transform: rotate(calc(var(--dir, 1) * -13deg)); } 60% { transform: rotate(calc(var(--dir, 1) * 7deg)); } 76% { transform: rotate(calc(var(--dir, 1) * -3deg)); } 100% { transform: rotate(0); } }
+.xm-layer .xm-hang.xm-nudge { animation: xmNudge 1.7s ease-out; }
+@keyframes xmNudge { 0% { transform: rotate(0); } 16% { transform: rotate(calc(var(--dir, 1) * 9deg)); } 36% { transform: rotate(calc(var(--dir, 1) * -6deg)); } 58% { transform: rotate(calc(var(--dir, 1) * 3deg)); } 80% { transform: rotate(calc(var(--dir, 1) * -1deg)); } 100% { transform: rotate(0); } }
+.xm-clap { transform-box: fill-box; transform-origin: 50% 0; }
+.xm-hang.xm-ring .xm-clap, .xm-hang.xm-nudge .xm-clap { animation: xmClap .22s ease-in-out 8 alternate; }
+@keyframes xmClap { from { transform: translateX(-3px); } to { transform: translateX(3px); } }
 
 /* Árbol */
 .xm-deco { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
@@ -31,8 +35,10 @@
 .xm-tree, .xm-gifts, .xm-sm { display: block; width: 100%; height: auto; overflow: visible; }
 .xm-tree { transform-origin: 50% 100%; filter: drop-shadow(0 6px 6px rgb(20 40 60 / .2)); }
 .xm-deco .xm-tree-w * { pointer-events: none; }
-.xm-tl { animation: xmTw2 1.9s ease-in-out infinite alternate; }
-@keyframes xmTw2 { from { opacity: .35; } to { opacity: 1; } }
+.xm-tl { opacity: .9; }
+.xm-tier { transform-box: fill-box; transform-origin: 50% 0; }
+.xm-tier.xm-spring { animation: xmSpring .9s ease-out; }
+@keyframes xmSpring { 0% { transform: translateY(2.4px); } 22% { transform: translateY(-2.2px) rotate(-.8deg); } 48% { transform: translateY(1px) rotate(.5deg); } 74% { transform: translateY(-.4px); } 100% { transform: none; } }
 .xm-orn { transform-box: fill-box; transform-origin: 50% 0; animation: xmOrn 3.4s ease-in-out infinite alternate; }
 @keyframes xmOrn { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
 .xm-star { transform-box: fill-box; transform-origin: 50% 55%; animation: xmStar 2.6s ease-in-out infinite alternate; }
@@ -41,7 +47,7 @@
 @keyframes xmHalo { from { opacity: .4; transform: scale(.85); } to { opacity: 1; transform: scale(1.2); } }
 .xm-tree.xm-shake { animation: xmShake 1.5s ease-out; }
 @keyframes xmShake { 0% { transform: rotate(0); } 10% { transform: rotate(-3.4deg); } 24% { transform: rotate(3deg); } 40% { transform: rotate(-2deg); } 58% { transform: rotate(1.2deg); } 78% { transform: rotate(-.5deg); } 100% { transform: rotate(0); } }
-.xm-tree.xm-flashT .xm-tl { animation: xmTw2 .22s linear infinite alternate; filter: brightness(1.5); }
+.xm-tree.xm-flashT .xm-tl { filter: brightness(1.5); }
 .xm-tree.xm-flashT .xm-orn { animation: xmOrnHard .4s ease-in-out infinite alternate; }
 .xm-tree.xm-flashT .xm-halo { animation-duration: .4s; }
 @keyframes xmOrnHard { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
@@ -67,6 +73,29 @@
 @keyframes xmArmL { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
 @keyframes xmArmR { from { transform: rotate(6deg); } to { transform: rotate(-6deg); } }
 .xm-snowman.wave .xm-arm-r { animation: xmWave .32s ease-in-out infinite alternate; }
+.xm-head { transform-box: fill-box; transform-origin: 50% 100%; transition: transform .4s cubic-bezier(.3, 1.4, .5, 1); }
+.xm-snowman.tilt .xm-head { transform: rotate(-9deg) translateX(-1px); }
+.xm-pup { transition: transform .3s ease; }
+.xm-snowman.lookL .xm-pup { transform: translate(-1.8px, .5px); }
+.xm-snowman.lookR .xm-pup { transform: translate(1.8px, .5px); }
+.xm-carrot { transform-box: fill-box; transform-origin: 0 50%; }
+.xm-snowman.nose .xm-carrot { animation: xmNoseB 1s ease-out; }
+@keyframes xmNoseB { 0% { transform: none; } 20% { transform: scaleX(1.9) rotate(-6deg); } 40% { transform: scaleX(.75); } 60% { transform: scaleX(1.3) rotate(4deg); } 100% { transform: none; } }
+.xm-snowman.hop .xm-sm { animation: xmHop .75s cubic-bezier(.3, .6, .5, 1); }
+@keyframes xmHop { 0% { transform: scale(1.06, .92); } 20% { transform: scale(.94, 1.08); } 45% { transform: translateY(-26px) scale(.97, 1.04); } 75% { transform: translateY(0) scale(1.07, .93); } 100% { transform: none; } }
+.xm-snowman.shiver .xm-sm { animation: xmShiver .12s linear 8 alternate; }
+@keyframes xmShiver { from { transform: translateX(-1.4px); } to { transform: translateX(1.4px); } }
+.xm-snowman.giggle .xm-sm { animation: xmGiggle .17s ease-in-out 8 alternate; }
+@keyframes xmGiggle { from { transform: rotate(-2.4deg) scale(1.02, .97); } to { transform: rotate(2.4deg) scale(.98, 1.03); } }
+.xm-snowman.giggle .xm-head { transform: rotate(6deg); }
+.xm-snowman.dance .xm-sm { animation: xmDance .34s ease-in-out infinite alternate; }
+@keyframes xmDance { from { transform: rotate(-7deg) translateY(0); } to { transform: rotate(7deg) translateY(-7px); } }
+.xm-snowman.dance .xm-arm-l { animation: xmArmUpL .34s ease-in-out infinite alternate; }
+.xm-snowman.dance .xm-arm-r { animation: xmArmUpR .34s ease-in-out infinite alternate; }
+@keyframes xmArmUpL { from { transform: rotate(-30deg); } to { transform: rotate(14deg); } }
+@keyframes xmArmUpR { from { transform: rotate(14deg); } to { transform: rotate(-30deg); } }
+.xm-snowman.throw .xm-arm-r { animation: xmThrow .9s ease-in-out; }
+@keyframes xmThrow { 0% { transform: rotate(0); } 30% { transform: rotate(38deg); } 55% { transform: rotate(-50deg); } 100% { transform: rotate(0); } }
 @keyframes xmWave { from { transform: rotate(4deg); } to { transform: rotate(-30deg); } }
 .xm-scarf-tail { transform-box: fill-box; transform-origin: 0 0; animation: xmScarf 2.2s ease-in-out infinite alternate; }
 @keyframes xmScarf { from { transform: rotate(-5deg); } to { transform: rotate(9deg); } }
@@ -80,11 +109,35 @@
 .xm-layer .xm-sleigh * { pointer-events: none; }
 .xm-sl-in { width: 100%; height: 100%; }
 .xm-sl-svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 6px 6px rgb(20 30 60 / .25)); }
-.xm-leg { transform-box: fill-box; transform-origin: 50% 0; animation: xmGallop .46s ease-in-out infinite alternate; }
-.xm-leg.l2 { animation-direction: alternate-reverse; }
-@keyframes xmGallop { from { transform: rotate(-26deg); } to { transform: rotate(26deg); } }
-.xm-santa-arm { transform-box: fill-box; transform-origin: 0 100%; animation: xmSantaArm .55s ease-in-out infinite alternate; }
-@keyframes xmSantaArm { from { transform: rotate(-12deg); } to { transform: rotate(16deg); } }
+.xm-th, .xm-sh { transform-box: fill-box; transform-origin: 50% 0; animation: xmThigh .46s ease-in-out infinite alternate; animation-delay: var(--ph, 0s); }
+.xm-sh { animation-name: xmShin; }
+.xm-th.gb, .xm-sh.gb { animation-direction: alternate-reverse; }
+@keyframes xmThigh { from { transform: rotate(-24deg); } to { transform: rotate(24deg); } }
+@keyframes xmShin { from { transform: rotate(44deg); } to { transform: rotate(3deg); } }
+.xm-dr { animation: xmBob .46s ease-in-out infinite alternate; animation-delay: var(--ph, 0s); }
+@keyframes xmBob { from { transform: translateY(1.2px); } to { transform: translateY(-2.6px); } }
+.xm-hd { transform-box: fill-box; transform-origin: 30% 90%; animation: xmHead .92s ease-in-out infinite alternate; animation-delay: var(--ph, 0s); }
+@keyframes xmHead { from { transform: rotate(-3deg); } to { transform: rotate(4deg); } }
+.xm-ear { transform-box: fill-box; transform-origin: 50% 100%; animation: xmEar 2.6s ease-in-out infinite; }
+@keyframes xmEar { 0%, 84%, 100% { transform: none; } 90% { transform: rotate(-16deg); } 95% { transform: rotate(5deg); } }
+.xm-tail { transform-box: fill-box; transform-origin: 100% 100%; animation: xmTail .3s ease-in-out infinite alternate; }
+@keyframes xmTail { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
+.xm-jing { transform-box: fill-box; transform-origin: 50% 0; animation: xmJing .23s ease-in-out infinite alternate; }
+@keyframes xmJing { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+.xm-sled { transform-box: fill-box; transform-origin: 50% 100%; animation: xmSled .92s ease-in-out infinite alternate; }
+@keyframes xmSled { from { transform: translateY(.8px) rotate(.4deg); } to { transform: translateY(-1.8px) rotate(-.5deg); } }
+.xm-sack { transform-box: fill-box; transform-origin: 50% 100%; animation: xmSack .46s ease-in-out infinite alternate; }
+@keyframes xmSack { from { transform: scale(1.02, .97); } to { transform: scale(.98, 1.03); } }
+.xm-reins { transform-box: fill-box; transform-origin: 0 50%; animation: xmReins .46s ease-in-out infinite alternate; }
+@keyframes xmReins { from { transform: translateY(-.8px); } to { transform: translateY(1.4px); } }
+.xm-beard { transform-box: fill-box; transform-origin: 70% 0; animation: xmBeard .6s ease-in-out infinite alternate; }
+@keyframes xmBeard { from { transform: skewX(-2deg) rotate(1deg); } to { transform: skewX(7deg) rotate(-3deg); } }
+.xm-pom { transform-box: fill-box; transform-origin: 0 40%; animation: xmPom .5s ease-in-out infinite alternate; }
+@keyframes xmPom { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
+.xm-head-s { transform-box: fill-box; transform-origin: 50% 100%; animation: xmHeadS 1.8s ease-in-out infinite alternate; }
+@keyframes xmHeadS { from { transform: rotate(-2deg); } to { transform: rotate(2.5deg); } }
+.xm-santa-arm { transform-box: fill-box; transform-origin: 100% 100%; animation: xmSantaArm .55s ease-in-out infinite alternate; }
+@keyframes xmSantaArm { from { transform: rotate(-14deg); } to { transform: rotate(12deg); } }
 .xm-nose { animation: xmNose 1s ease-in-out infinite alternate; }
 @keyframes xmNose { from { opacity: .45; } to { opacity: 1; } }
 
@@ -103,6 +156,11 @@
 @keyframes xmFall { 0% { transform: translate(-50%, 0) rotate(0); opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(-50%, 240px) rotate(var(--rot)); opacity: 0; } }
 .xm-dg { display: block; filter: drop-shadow(0 3px 3px rgb(20 30 50 / .25)); }
 
+.xm-note { position: absolute; font: 700 22px/1 system-ui, sans-serif; transform: translate(-50%, 0); animation: xmNote 1.6s ease-out forwards; text-shadow: 0 2px 6px rgb(20 30 60 / .25); }
+@keyframes xmNote { 0% { opacity: 0; transform: translate(-50%, 0) scale(.5); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--nx, 0px)), -90px) rotate(18deg) scale(1.1); } }
+.xm-ball { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #dbe6f5 70%, #b4c6df); box-shadow: 0 2px 4px rgb(20 40 70 / .25); animation: xmBall .9s linear forwards; }
+@keyframes xmBall { 0% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * .5), calc(var(--dy) * .5 - 80px)); } 100% { transform: translate(var(--dx), var(--dy)); } }
+#navidadSoundBtn.link-btn { margin-left: 12px; }
 [data-navidad="on"] #recoveryBanner { margin-top: 64px; }
 
 /* Tinte suave de Navidad */
