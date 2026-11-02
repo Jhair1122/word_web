@@ -106,6 +106,10 @@
         case "pop": tone(500, t, 0.1, { v: 0.16, to: 900 }); break;
         case "dance": [523, 659, 784, 659, 880, 784, 1047].forEach(function (x, k) { tone(x, t + k * 0.13, 0.28, { type: "triangle", v: 0.1, p: [[1, 1], [2, 0.2]] }); }); break;
         case "gift": [523, 659, 784, 1047].forEach(function (x, k) { tone(x, t + k * 0.07, 0.5, { type: "triangle", v: 0.12, p: [[1, 1], [2, 0.25]] }); }); break;
+        case "sip": for (i = 0; i < 3; i++) noise(t + i * 0.2, 0.13, 520, 0.8, 0.07, "lowpass"); tone(330, t + 0.62, 0.3, { v: 0.07, to: 240 }); break;
+        case "clink": tone(2200, t, 0.55, { v: 0.12, p: [[1, 1], [2.4, 0.4], [4.1, 0.15]] }); tone(2950, t + 0.04, 0.45, { v: 0.08, p: [[1, 1], [2.3, 0.3]] }); break;
+        case "mistle": [1319, 1047, 880].forEach(function (x, k) { tone(x, t + k * 0.12, 0.7, { v: 0.1, p: [[1, 1], [2, 0.25]] }); }); break;
+        case "jingle": for (i = 0; i < 12; i++) tone(2800 + Math.random() * 2200, t + i * 0.04, 0.2, { v: 0.05, p: [[1, 1], [1.6, 0.5]] }); break;
         case "sleigh":
           for (i = 0; i < 14; i++) tone(3000 + Math.random() * 2500, t + i * 0.045, 0.2, { v: 0.045, p: [[1, 1], [1.6, 0.5]] });
           [165, 147, 131].forEach(function (x, k) { tone(x, t + 0.32 + k * 0.3, 0.26, { type: "triangle", v: 0.16, p: [[1, 1], [2, 0.5], [3, 0.25]] }); }); break;
@@ -135,6 +139,9 @@
       '<radialGradient id="xmGlowG" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff6c4" stop-opacity=".95"/><stop offset="1" stop-color="#ffd25a" stop-opacity="0"/></radialGradient>' +
       '<radialGradient id="xmNoseGlow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff5a5a" stop-opacity=".9"/><stop offset=".5" stop-color="#ff3b3b" stop-opacity=".3"/><stop offset="1" stop-color="#ff3b3b" stop-opacity="0"/></radialGradient>' +
       '<linearGradient id="xmWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9423f"/><stop offset=".55" stop-color="#a42a30"/><stop offset="1" stop-color="#7a1c26"/></linearGradient>' +
+      '<linearGradient id="xmPan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3cf7e"/><stop offset=".6" stop-color="#d9a04a"/><stop offset="1" stop-color="#b9772d"/></linearGradient>' +
+      '<linearGradient id="xmMug" x1="0" x2="1"><stop offset="0" stop-color="#dfe6f1"/><stop offset=".4" stop-color="#fff"/><stop offset="1" stop-color="#cdd6e4"/></linearGradient>' +
+      '<filter id="xmBlurS" x="-50%" y="-30%" width="200%" height="160%"><feGaussianBlur stdDeviation="1.1"/></filter>' +
       '<filter id="xmBlur" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3.2"/></filter>' +
       '</defs></svg>';
     return s;
@@ -247,9 +254,10 @@
     }
     for (x = 0; x <= w + P; x += P) {                               // lazos en cada anclaje
       var g = S("g", { transform: "translate(" + x + " " + (y0 + 2) + ")" }, svg);
-      g.innerHTML = '<path d="M0 0 C-14 -10 -20 4 -8 8 C-4 9 -1 4 0 0Z" fill="url(#xmRedH)"/><path d="M0 0 C14 -10 20 4 8 8 C4 9 1 4 0 0Z" fill="url(#xmRedH)"/>' +
+      g.innerHTML = '<g class="xm-holly"><path d="M2 2 C8 -6 18 -6 24 0 L21 2 L25 5 L20 7 L23 11 C14 12 6 9 2 2Z" fill="url(#xmGreenV)" stroke="#145a3b" stroke-width=".7"/><path d="M-2 2 C-8 -6 -18 -6 -24 0 L-21 2 L-25 5 L-20 7 L-23 11 C-14 12 -6 9 -2 2Z" fill="url(#xmGreenV)" stroke="#145a3b" stroke-width=".7"/><path d="M3 3 L19 1 M-3 3 L-19 1" stroke="#0f4a30" stroke-opacity=".5" stroke-width=".8"/></g>' +
+        '<path d="M0 0 C-14 -10 -20 4 -8 8 C-4 9 -1 4 0 0Z" fill="url(#xmRedH)"/><path d="M0 0 C14 -10 20 4 8 8 C4 9 1 4 0 0Z" fill="url(#xmRedH)"/>' +
         '<path d="M-2 4 L-9 20 L-3 17 L0 22Z M2 4 L9 20 L3 17 L0 22Z" fill="#b81d2e"/><circle r="3.4" fill="url(#xmRed)"/><circle cx="-1" cy="-1" r="1" fill="#fff" opacity=".7"/>' +
-        '<circle cx="-14" cy="6" r="2.4" fill="url(#xmGold)"/><circle cx="14" cy="6" r="2.4" fill="url(#xmGold)"/>';
+        '<circle cx="-14" cy="6" r="2.4" fill="url(#xmGold)"/><circle cx="14" cy="6" r="2.4" fill="url(#xmGold)"/><circle cx="-4" cy="9" r="2.3" fill="url(#xmRed)"/><circle cx="1" cy="11" r="2.3" fill="url(#xmRed)"/><circle cx="5" cy="8.4" r="2.3" fill="url(#xmRed)"/><circle cx="-4.6" cy="8.2" r=".7" fill="#fff" opacity=".85"/>';
     }
     bulbs = [];
     var k = 0;
@@ -301,6 +309,22 @@
         '<path d="M-2 1 L-2 24" stroke="#fff" stroke-opacity=".5" stroke-width="1.2" stroke-linecap="round"/><path d="M-4 -1 C-12 -11 -3 -14 3 -6" fill="none" stroke="#1f9d57" stroke-width="2.4" stroke-linecap="round"/><circle cx="-5" cy="-3" r="2" fill="url(#xmRed)"/></g>';
       return svgEl("xm-hs", "0 0 44 " + (y + 42), s, 44, y + 42);
     }
+    if (kind === "mistle") {
+      var lf = function (x, yy, r, c) { return '<ellipse cx="' + x + '" cy="' + yy + '" rx="3.4" ry="7.4" transform="rotate(' + r + ' ' + x + ' ' + yy + ')" fill="' + c + '" stroke="#1d6a3c" stroke-width=".6"/><path d="M' + x + ' ' + (yy - 5) + ' L' + x + ' ' + (yy + 5) + '" stroke="#bfe8c6" stroke-width=".6" opacity=".7" transform="rotate(' + r + ' ' + x + ' ' + yy + ')"/>'; };
+      s = rope + '<g transform="translate(22 ' + (y + 2) + ')"><path d="M0 0 C-7 -7 -12 -3 -6 1 M0 0 C7 -7 12 -3 6 1" fill="none" stroke="#d1242f" stroke-width="2.6" stroke-linecap="round"/><circle r="2.4" fill="url(#xmRed)"/>' +
+        '<path d="M0 3 L-9 20 M0 3 L9 22 M0 3 L0 24" stroke="#4d7a3a" stroke-width="1.6" stroke-linecap="round"/>' +
+        lf(-10, 22, 50, "#4fae5f") + lf(-14, 15, 75, "#3d9c52") + lf(11, 24, -45, "#4fae5f") + lf(14, 17, -72, "#3d9c52") + lf(-3, 28, 15, "#2f8a4a") + lf(4, 30, -15, "#3d9c52") +
+        '<circle cx="-2" cy="14" r="3.3" fill="#fbfbf3" stroke="#d9dccc" stroke-width=".6"/><circle cx="3.4" cy="15.4" r="3.3" fill="#fbfbf3" stroke="#d9dccc" stroke-width=".6"/><circle cx="0.4" cy="19.2" r="3.3" fill="#fbfbf3" stroke="#d9dccc" stroke-width=".6"/>' +
+        '<circle cx="-3" cy="12.8" r=".9" fill="#fff"/><circle cx="2.4" cy="14.2" r=".9" fill="#fff"/><circle cx="-0.6" cy="18" r=".9" fill="#fff"/></g>';
+      return svgEl("xm-hs", "0 0 44 " + (y + 42), s, 44, y + 42);
+    }
+    if (kind === "wreath") {
+      s = rope + '<g transform="translate(22 ' + (y + 20) + ')"><circle r="14" fill="none" stroke="#1a6b43" stroke-width="9"/><circle r="14" fill="none" stroke="#37a768" stroke-width="7" stroke-dasharray="3 2.2"/><circle r="14" fill="none" stroke="#7fd69d" stroke-width="2" stroke-dasharray="1.4 4.4" opacity=".8"/>' +
+        '<circle cx="-9" cy="-9" r="2.2" fill="url(#xmRed)"/><circle cx="-6" cy="-11.6" r="2.2" fill="url(#xmRed)"/><circle cx="9.6" cy="-8" r="2.2" fill="url(#xmRed)"/><circle cx="-13" cy="3" r="2.2" fill="url(#xmRed)"/><circle cx="12" cy="6" r="2.2" fill="url(#xmRed)"/>' +
+        '<circle cx="0" cy="-14" r="2.6" fill="url(#xmGold)"/><circle cx="-11" cy="10" r="2.4" fill="url(#xmGold)"/>' +
+        '<g transform="translate(0 13)"><path d="M0 0 C-10 -8 -15 2 -6 4 C-2 4 0 2 0 0Z M0 0 C10 -8 15 2 6 4 C2 4 0 2 0 0Z" fill="url(#xmRedH)"/><path d="M-2 3 L-7 14 L-2 11 L0 16Z M2 3 L7 14 L2 11 L0 16Z" fill="#b81d2e"/><circle r="2.6" fill="url(#xmRed)"/></g></g>';
+      return svgEl("xm-hs", "0 0 44 " + (y + 44), s, 44, y + 44);
+    }
     var fills = { ballR: "url(#xmRed)", ballG: "url(#xmGold)", ballB: "url(#xmB3)", ballP: "url(#xmB4)" }, f = fills[kind] || fills.ballR;
     s = rope + '<rect x="17" y="' + (y - 1) + '" width="10" height="7" rx="2" fill="url(#xmGold)"/><g transform="translate(22 ' + (y + 22) + ')">' +
       '<circle r="16" fill="' + f + '"/><path d="M-15.6 -3 Q0 5 15.6 -3 L15.4 3 Q0 11 -15.4 3Z" fill="#fff" opacity=".85"/>' +
@@ -308,9 +332,9 @@
       '<ellipse cx="-6" cy="-8" rx="4" ry="6" fill="#fff" opacity=".55" transform="rotate(25 -6 -8)"/><circle cx="6" cy="9" r="1.6" fill="#fff" opacity=".4"/></g>';
     return svgEl("xm-hs", "0 0 44 " + (y + 42), s, 44, y + 42);
   }
-  var HSND = { ballR: "ball", ballG: "ball", ballB: "ball", ballP: "ball", bell: "bell", star: "star", cane: "cane" };
+  var HSND = { mistle: "mistle", wreath: "jingle", ballR: "ball", ballG: "ball", ballB: "ball", ballP: "ball", bell: "bell", star: "star", cane: "cane" };
   function buildHangs(layer, w, gy) {
-    var big = w > 900, kinds = big ? ["ballR", "bell", "ballG", "star", "ballB", "cane", "ballP", "bell", "ballR"] : ["ballR", "bell", "ballG", "star", "cane"], n = kinds.length, i, els = [];
+    var big = w > 900, kinds = big ? ["ballR", "mistle", "bell", "ballG", "wreath", "star", "ballB", "cane", "mistle", "ballP", "bell", "ballR"] : ["ballR", "bell", "mistle", "star", "wreath", "cane"], n = kinds.length, i, els = [];
     dbg.hangs = n;
     for (i = 0; i < n; i++) {
       var x = Math.round(w * (0.06 + 0.88 * (i + 0.5) / n)), L = big ? 22 + ((i * 17) % 34) : 12 + ((i * 17) % 18);
@@ -325,6 +349,8 @@
         pulse(e, "xm-ring", 2200); var c = centro(e); burst(c[0], c[1] + 20, { n: 9 });
         sfx(HSND[kinds[k]]);
         if (kinds[k] === "bell") bubble(e, "¡Ding, ding!");
+        if (kinds[k] === "mistle") { bubble(e, "¡Un beso bajo el muérdago!"); burst(c[0], c[1] + 16, { n: 8, col: "#ff8fb1" }); }
+        if (kinds[k] === "wreath") bubble(e, "¡Feliz Navidad!");
         [-2, -1, 1, 2].forEach(function (d) {                         // los vecinos se balancean un poco por el golpe
           var nb = els[k + d]; if (!nb) return;
           later(function () { nb.style.setProperty("--dir", d < 0 ? -1 : 1); pulse(nb, "xm-nudge", 1700); }, 110 * Math.abs(d));
@@ -557,6 +583,47 @@
   }
 
   // ======================================================================
+  //  Chocolatada caliente con vapor y panetón (genérico, sin marcas)
+  // ======================================================================
+  function treatSvg() {
+    function el(cx, cy, rx, ry, c, o, r) { return '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '" fill="' + c + '" opacity="' + o + '"' + (r ? ' transform="rotate(' + r + ' ' + cx + ' ' + cy + ')"' : "") + '/>'; }
+    var pores = "", k, rnd = seeded(77);
+    for (k = 0; k < 22; k++) pores += el((78 + rnd() * 28).toFixed(1), (52 + rnd() * 22).toFixed(1), (0.8 + rnd() * 1.3).toFixed(1), (0.5 + rnd() * 0.8).toFixed(1), "#c98f2c", (0.35 + rnd() * 0.3).toFixed(2), (rnd() * 90) | 0);
+    var rais = [[80, 62], [90, 55], [99, 66], [86, 70], [104, 57], [94, 62]], fruit = [[84, 57, "#6fb04a"], [101, 70, "#6fb04a"], [92, 71, "#d9473f"], [97, 53, "#e08a2c"], [79, 70, "#d9473f"]], fr = "";
+    rais.forEach(function (p) { fr += '<ellipse cx="' + p[0] + '" cy="' + p[1] + '" rx="2.5" ry="2.1" fill="#4a2a38"/><ellipse cx="' + (p[0] - 0.7) + '" cy="' + (p[1] - 0.7) + '" rx=".8" ry=".6" fill="#fff" opacity=".35"/>'; });
+    fruit.forEach(function (p) { fr += '<rect x="' + p[0] + '" y="' + p[1] + '" width="3.6" height="3.2" rx=".8" fill="' + p[2] + '" transform="rotate(' + (p[0] * 7 % 40) + ' ' + p[0] + ' ' + p[1] + ')"/>'; });
+    var bar = '<g transform="translate(103 70) rotate(-14)"><rect width="13" height="9" rx="1" fill="#3a2418"/><path d="M4.3 0 V9 M8.6 0 V9 M0 4.5 H13" stroke="#6a4630" stroke-width=".7"/><path d="M0.5 .5 H12.5" stroke="#8a6048" stroke-width=".6"/></g>';
+    return '<ellipse cx="82" cy="86" rx="76" ry="5" fill="rgba(30,50,80,.2)"/><rect x="2" y="76" width="156" height="9" rx="4.5" fill="url(#xmBrown)"/><path d="M8 78.4 L152 78.4" stroke="#d8aa78" stroke-opacity=".55" stroke-width="1"/>' +
+      // panetón entero (genérico: papel liso con cinta roja)
+      '<g class="xm-pan"><path d="M8 76 C6 52 17 30 33 30 C49 30 60 52 58 76Z" fill="url(#xmPan)"/><path d="M11 58 C14 40 22 32 33 31 C44 32 52 40 55 58 C46 52 20 52 11 58Z" fill="#a4631f" opacity=".45"/>' +
+      '<g fill="#fff" opacity=".85"><circle cx="24" cy="40" r=".9"/><circle cx="33" cy="35" r=".9"/><circle cx="42" cy="41" r=".9"/><circle cx="30" cy="47" r=".9"/><circle cx="47" cy="48" r=".9"/><circle cx="21" cy="50" r=".9"/></g>' +
+      '<path d="M7.4 62 L58.6 62 L58 76 L8 76Z" fill="#f6ead0"/><path d="M7.7 66 L58.3 66 L58.1 72 L7.9 72Z" fill="url(#xmRedH)"/><text x="33" y="71" text-anchor="middle" font-size="5.6" font-weight="700" fill="#fff6c4" font-family="Georgia,serif">Panetón</text>' +
+      '<path d="M18 33 Q24 27 33 30" stroke="#fff" stroke-opacity=".5" stroke-width="1.6" fill="none" stroke-linecap="round"/></g>' +
+      // plato y tajada (miga amarilla con pasas y frutas confitadas)
+      '<path d="M66 75.4 L120 75.4 L116 79 L70 79Z" fill="#fff"/><ellipse cx="93" cy="76.2" rx="27" ry="3" fill="#fff"/><ellipse cx="93" cy="76.2" rx="27" ry="3" fill="none" stroke="#d5dbe7" stroke-width=".8"/>' +
+      '<g class="xm-slice"><path d="M72 76 L75 54 C79 44 105 44 109 54 L113 76Z" fill="#f4cf62"/><path d="M72 76 L75 54 C79 44 105 44 109 54 L113 76Z" fill="url(#xmPan)" opacity=".28"/>' + pores + fr +
+      '<path d="M75 54 C79 44 105 44 109 54" fill="none" stroke="#b9772d" stroke-width="3" stroke-linecap="round"/><path d="M75.4 54 L72 76 M108.6 54 L113 76" stroke="#d99a3d" stroke-width="1.6" stroke-linecap="round"/><path d="M79 49 Q92 44.4 104 49" stroke="#fff" stroke-opacity=".35" stroke-width="1.2" fill="none"/></g>' + bar +
+      // taza blanca de esmalte con chocolate espumoso y canela
+      '<g class="xm-mug"><path d="M118 52 L118 71 Q118 78 126 78 L145 78 Q153 78 153 71 L153 52Z" fill="url(#xmMug)"/><path d="M117.6 53 L153.4 53" stroke="#2b2f3a" stroke-width="1.2"/>' +
+      '<path d="M153 57 C165 55 165 72 151 71" fill="none" stroke="#d6deeb" stroke-width="4.4" stroke-linecap="round"/><path d="M153 57 C165 55 165 72 151 71" fill="none" stroke="#c4cddd" stroke-width=".7" stroke-linecap="round" opacity=".7"/>' +
+      '<ellipse cx="135.5" cy="52" rx="18.5" ry="4.8" fill="#fff" stroke="#2b2f3a" stroke-width="1.2"/><ellipse cx="135.5" cy="52.4" rx="16.4" ry="3.6" fill="#a8705a"/>' +
+      '<g fill="#d9b09a" opacity=".85"><circle cx="128" cy="52" r="1.2"/><circle cx="132" cy="53.4" r="1"/><circle cx="137" cy="51.6" r="1.3"/><circle cx="141" cy="53" r="1"/><circle cx="144.4" cy="51.8" r=".9"/><circle cx="133" cy="51" r=".8"/></g><ellipse cx="130" cy="51.2" rx="5" ry="1" fill="#fff" opacity=".35"/>' +
+      '<path d="M142 52.5 L151 36" stroke="#b86a34" stroke-width="3.2" stroke-linecap="round"/><path d="M142.6 52 L150.6 37.2" stroke="#d99a62" stroke-width="1" stroke-linecap="round"/><ellipse cx="121.6" cy="66" rx="1.3" ry="8" fill="#fff" opacity=".6"/></g>' +
+      '<g class="xm-steam" fill="none" stroke="#8fa4c0" stroke-width="3" stroke-linecap="round" filter="url(#xmBlurS)"><path class="s1" d="M128 44 C122 36 134 30 128 22 C123 15 132 10 128 2"/><path class="s2" d="M137 44 C131 34 144 28 137 18 C132 10 141 4 137 -6"/><path class="s3" d="M146 44 C141 37 152 32 146 24 C142 17 150 12 146 4"/></g>';
+  }
+  function buildTreat() {
+    var el = D("xm-treat"), react = 0; el.appendChild(svgEl("xm-tr", "0 -14 168 104", treatSvg()));
+    var R = [
+      ["chocolate", function () { pulse(el, "puff", 1700); sfx("sip"); bubble(el, "¡Chocolatada caliente!"); var c = centro(el); burst(c[0] + 40, c[1] - 20, { n: 6, col: "#ff8fb1" }); }],
+      ["paneton", function () { pulse(el, "bounce", 900); sfx("pop"); bubble(el, "¡Con panetón sabe mejor!"); }],
+      ["salud", function () { pulse(el, "cheers", 1000); sfx("clink"); bubble(el, "¡Salud!"); var c = centro(el); burst(c[0] + 30, c[1] - 24, { n: 10 }); }]
+    ];
+    dbg.treat = { last: "", clicks: 0 };
+    tap(el, function () { var a = R[react % R.length]; react++; dbg.treat.last = a[0]; dbg.treat.clicks++; a[1](); });
+    return el;
+  }
+
+  // ======================================================================
   //  Trineo de Papá Noel con tres renos (cruza la pantalla de vez en cuando; clic = lluvia de regalos)
   // ======================================================================
   function leg(hx, hy, cls, col) {
@@ -718,7 +785,7 @@
     document.querySelectorAll(".scene").forEach(function (sc) {
       if (sc.querySelector(".xm-deco")) return;
       var deco = D("xm-deco"); deco.setAttribute("aria-hidden", "true");
-      var tr = buildTree("t1"); deco.appendChild(tr.el); deco.appendChild(buildGifts("g1"));
+      var tr = buildTree("t1"); deco.appendChild(tr.el); deco.appendChild(buildGifts("g1")); deco.appendChild(buildTreat());
       if (animar()) objs.push(tr.ctl);
       sc.appendChild(deco);
     });
@@ -785,6 +852,7 @@
   function init() { crearBoton(); if (activo()) montar(); else actualizarBoton(); }
   dbg.fillTree = function (v) { trees.forEach(function (t) { t.set(v); }); };
   dbg.sleighSvg = function () { return DEFS + '<svg viewBox="-8 -24 420 106" width="1260" height="318">' + sleighSvg() + "</svg>"; };
+  dbg.treatSvg = function () { return DEFS + '<svg viewBox="0 -14 168 104" width="1000" height="620">' + treatSvg() + "</svg>"; };
   dbg.snowmanSvg = function () { return DEFS + '<svg viewBox="-6 -10 112 160" width="448" height="640">' + snowmanSvg() + "</svg>"; };
   window.PangoaNavidad = { montar: montar, desmontar: desmontar, debug: dbg };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
