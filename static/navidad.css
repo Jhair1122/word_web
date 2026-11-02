@@ -104,6 +104,26 @@
 .xm-hat { transform-box: fill-box; transform-origin: 0 100%; transition: transform .3s cubic-bezier(.3, 1.5, .5, 1); }
 .xm-snowman.tip .xm-hat { transform: translate(-4px, -11px) rotate(-22deg); }
 
+/* Chocolatada y panetón */
+.xm-deco .xm-treat { left: 4%; bottom: 3%; width: 140px; cursor: pointer; pointer-events: auto; }
+.xm-deco .xm-treat * { pointer-events: none; }
+.xm-tr { display: block; width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 4px 4px rgb(20 40 60 / .2)); }
+.xm-steam path { transform-box: fill-box; transform-origin: 50% 100%; opacity: 0; animation: xmSteam 3.4s ease-out infinite; }
+.xm-steam .s2 { animation-delay: -1.2s; animation-duration: 3.9s; }
+.xm-steam .s3 { animation-delay: -2.3s; animation-duration: 3.1s; }
+@keyframes xmSteam { 0% { opacity: 0; transform: translate(0, 6px) scale(.8, .6); } 25% { opacity: .75; } 70% { opacity: .35; } 100% { opacity: 0; transform: translate(4px, -12px) scale(1.25, 1.2); } }
+.xm-treat.puff .xm-steam path { animation-duration: 1.1s; stroke-width: 4.2; }
+.xm-mug { transform-box: fill-box; transform-origin: 50% 100%; }
+.xm-treat.puff .xm-mug { animation: xmSip 1.5s ease-in-out; }
+@keyframes xmSip { 0%, 100% { transform: none; } 30%, 60% { transform: translateY(-5px) rotate(-9deg); } }
+.xm-pan, .xm-slice { transform-box: fill-box; transform-origin: 50% 100%; }
+.xm-treat.bounce .xm-pan { animation: xmBouncePan .9s cubic-bezier(.3, 1.4, .5, 1); }
+.xm-treat.bounce .xm-slice { animation: xmBouncePan .9s .12s cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes xmBouncePan { 0% { transform: none; } 30% { transform: translateY(-8px) scale(.96, 1.06); } 60% { transform: translateY(0) scale(1.05, .94); } 100% { transform: none; } }
+.xm-treat.cheers .xm-mug { animation: xmCheers 1s ease-in-out; }
+@keyframes xmCheers { 0%, 100% { transform: none; } 35% { transform: translate(-14px, -6px) rotate(-14deg); } 55% { transform: translate(-10px, -3px) rotate(-6deg); } }
+.xm-holly { transform-box: fill-box; }
+
 /* Trineo de Papá Noel */
 .xm-layer .xm-sleigh { position: absolute; left: 0; top: 0; visibility: hidden; cursor: pointer; pointer-events: auto; will-change: transform; }
 .xm-layer .xm-sleigh * { pointer-events: none; }
@@ -174,6 +194,7 @@
   .xm-deco .xm-tree-w { width: 92px; right: 2%; }
   .xm-deco .xm-gifts-w { width: 76px; right: calc(2% + 84px); bottom: 3%; }
   .xm-layer .xm-snowman { width: 56px; right: 6px; }
+  .xm-deco .xm-treat { width: 78px; left: 2%; }
 }
 html[data-fx="off"] .xm-layer *, html[data-fx="off"] .xm-deco * { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .xm-layer *, .xm-deco * { animation: none !important; } }
