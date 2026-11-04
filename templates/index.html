@@ -157,6 +157,7 @@
         </div>
 
         <div id="itemsContainer"></div>
+        <div id="fitHint" class="fit-hint" hidden></div>
         <p class="help-text">Cada cuadro corresponde a una fila del Word. Puedes agregar tantos como necesites; todos conservarán el mismo formato de la plantilla.</p>
       </section>
 
@@ -215,10 +216,27 @@
 <div id="previewModal" class="modal-overlay" hidden>
   <div class="modal-box modal-box-large" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
     <div class="modal-header">
-      <h3 id="previewTitle">Vista previa del documento</h3>
+      <h3 id="previewTitle">Revisar hojas antes de descargar</h3>
       <button type="button" id="previewCloseBtn" class="secondary">Cerrar</button>
     </div>
-    <div id="previewTableWrap"></div>
+    <div id="reviewSummary" class="review-summary"></div>
+    <div id="reviewSheets" class="review-sheets"></div>
+    <details class="review-table-details" open>
+      <summary>Ver resumen en tabla</summary>
+      <div id="previewTableWrap"></div>
+    </details>
+  </div>
+</div>
+
+<div id="fitModal" class="modal-overlay" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="fitTitle">
+    <h3 id="fitTitle">Hay hojas que no caben</h3>
+    <p id="fitMessage"></p>
+    <div class="modal-actions fit-actions">
+      <button type="button" id="fitSplitBtn" class="primary">Dividir y descargar</button>
+      <button type="button" id="fitReviewBtn" class="secondary">Revisar hojas</button>
+      <button type="button" id="fitForceBtn" class="secondary">Descargar así</button>
+    </div>
   </div>
 </div>
 
