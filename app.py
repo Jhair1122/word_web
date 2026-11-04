@@ -600,6 +600,30 @@ def add_page_break(document):
     document._element.body.append(p)
 
 
+def _insert_ppr_flag(p, tag, after):
+    """Agrega una marca de párrafo (pageBreakBefore / keepNext) respetando el orden del esquema."""
+    pPr = p.find(qn("w:pPr"))
+    if pPr is None:
+        pPr = OxmlElement("w:pPr")
+        p.insert(0, pPr)
+    if pPr.find(qn(tag)) is not None:
+        return
+    idx = 0
+    for i, ch in enumerate(list(pPr)):
+        if ch.tag in [qn(t) for t in after]:
+            idx = i + 1
+    el = OxmlElement(tag)
+    pPr.insert(idx, el)
+
+
+def mark_break_before(p):
+    _insert_ppr_flag(p, "w:pageBreakBefore", ("w:pStyle", "w:keepNext", "w:keepLines"))
+
+
+def keep_next(p):
+    _insert_ppr_flag(p, "w:keepNext", ("w:pStyle",))
+
+
 def build_document(entries):
     if not entries:
         raise ValueError("No hay páginas para generar.")
@@ -618,11 +642,17 @@ def build_document(entries):
         page_nodes = [deepcopy(node) for node in original_nodes]
         apply_data(page_nodes, data)
 
+        # El salto de página va como propiedad del primer párrafo de la hoja (no como párrafo aparte):
+        # así una hoja llena no deja una página en blanco. keepNext mantiene unido el bloque de fechas/año
+        # para que, si no cabe, pase entero a la página siguiente en vez de partirse.
+        if index > 0:
+            mark_break_before(page_nodes[0])
+        for node in page_nodes[6:13]:
+            if node.tag == qn("w:p"):
+                keep_next(node)
+
         for node in page_nodes:
             template_body.append(node)
-
-        if index < len(entries) - 1:
-            add_page_break(template)
 
     output = BytesIO()
     template.save(output)
