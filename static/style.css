@@ -136,3 +136,43 @@ footer { padding: 28px 20px 40px; text-align: center; font-size: 13px; color: va
 
 /* evita que un hijo ancho (lista de páginas) ensanche la columna única en móvil */
 .layout > * { min-width: 0; }
+
+/* ---------- Revisión de hojas ---------- */
+.fit-hint{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:12px 0 0;padding:10px 14px;border-radius:12px;background:#fff4e5;color:#7a4300;font-size:.92rem}
+.fit-hint[hidden]{display:none}
+.review-summary{margin:0 0 14px;padding:12px 14px;border-radius:12px;font-size:.95rem;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.review-summary.ok{background:#e8f7ee;color:#14532d}
+.review-summary.bad{background:#fff4e5;color:#7a4300}
+.review-sheets{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px;max-height:60vh;overflow:auto;padding:4px}
+.sheet-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px;border-radius:14px;background:#f5f5f7;border:2px solid transparent}
+.sheet-card.is-bad{border-color:#f5a623}
+.sheet-card-head{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:.9rem}
+.sheet-badge{padding:2px 10px;border-radius:980px;font-size:.78rem;font-weight:600}
+.sheet-badge.ok{background:#d6f2e0;color:#14532d}
+.sheet-badge.bad{background:#ffe3b8;color:#7a4300}
+.sheet-scale{position:relative;overflow:hidden;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.sheet-paper{position:absolute;left:0;top:0;width:612px;height:792px;transform:scale(var(--k));transform-origin:0 0;font-family:Calibri,Carlito,Arial,sans-serif;font-size:11px;color:#000}
+.sheet-paper .sh-frame{position:absolute;left:24px;top:24px;right:24px;bottom:28px;border:2px solid #444}
+.sheet-paper .sh-title{position:absolute;left:0;right:0;top:120px;text-align:center;font-weight:700;font-size:15px}
+.sheet-paper .sh-logo{position:absolute;left:230px;top:42px;width:150px;height:auto;max-height:70px;object-fit:contain}
+.sheet-paper .sh-cell{position:absolute;box-sizing:border-box;border:1px solid #000;overflow:hidden}
+.sheet-paper .sh-cell.sh-bad{background:#ffe3e3}
+.sheet-paper .sh-lab{font-weight:700;font-size:10px;padding:2px 4px;display:block}
+.sheet-paper .sh-val,.sheet-paper .sh-sub,.sheet-paper .sh-fol{display:block;padding:2px 4px;min-height:12px}
+.sheet-paper .sh-desc{position:absolute;left:4px;right:4px;display:block;line-height:13.52px}
+.sheet-paper .sh-edit{outline:none;cursor:text;border-radius:2px}
+.sheet-paper .sh-edit:hover{background:rgba(0,113,227,.10)}
+.sheet-paper .sh-edit:focus{background:rgba(0,113,227,.16);box-shadow:0 0 0 1px #0071e3}
+.sheet-paper .sh-tail{position:absolute;left:0;right:0}
+.sheet-paper .sh-abs{position:absolute;white-space:nowrap}
+.sheet-paper .sh-box{position:absolute;height:20.5px;border:1px solid #000;box-sizing:border-box;padding:2px 4px}
+.sheet-paper .sh-arce{font-weight:700}
+.sheet-paper .sh-limit{position:absolute;left:0;right:0;border-top:2px dashed #e11d48}
+.sheet-paper .sh-limit span{position:absolute;right:30px;top:-14px;color:#e11d48;font-size:10px;font-weight:700}
+.review-table-details{margin-top:14px}
+.review-table-details summary{cursor:pointer;color:#0066cc}
+.fit-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+button.sm{padding:6px 12px;font-size:.85rem}
+@media (max-width:480px){.review-sheets{grid-template-columns:1fr}}
+.sheet-card-head .sheet-badge{white-space:normal}
+.sheet-card{min-width:0}
