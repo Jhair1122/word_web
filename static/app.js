@@ -2,6 +2,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { setupAuthCookieSync } from "./auth-sync.js";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./supabase-config.js";
 import { initRecovery } from "./recovery.js";
+import { createSheetReview, askFit, overflowing, splitPage, pageFit } from "./hojas.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 setupAuthCookieSync(supabase);
@@ -173,6 +174,9 @@ undoBtn.addEventListener("click", async () => {
   } else if (lastDeleted.type === "clear") {
     pages = lastDeleted.pages;
     current = 0;
+  } else if (lastDeleted.type === "restore") {
+    pages = lastDeleted.pages;
+    current = Math.min(lastDeleted.current ?? 0, pages.length - 1);
   }
   lastDeleted = null;
 
@@ -406,6 +410,7 @@ function updateHeroStats() {
 
 function renderPages() {
   updateHeroStats();
+  updateFitHint();
   const prev = document.getElementById("prevBtn"), next = document.getElementById("nextBtn"), del = document.getElementById("deletePageBtn");
   if (prev) prev.disabled = current <= 0;
   if (next) next.textContent = current >= pages.length - 1 ? "Agregar página →" : "Siguiente →";
@@ -544,6 +549,7 @@ pageSearch.addEventListener("input", () => {
 
 function handleFormInput() {
   pages[current] = collectFormData();
+  updateFitHint();
   setStatus("Guardando...", "💾");
   clearTimeout(window.saveTimer);
   window.saveTimer = setTimeout(async () => {
@@ -634,6 +640,70 @@ document.getElementById("clearAllBtn").addEventListener("click", async () => {
   renderPages();
 });
 
+// ---- Revisión de hojas (cabe / no cabe en el Word) ----
+const fitHint = document.getElementById("fitHint");
+const fitModal = document.getElementById("fitModal");
+
+function updateFitHint() {
+  if (!fitHint) return;
+  const p = pages[current];
+  if (!p) { fitHint.hidden = true; return; }
+  const fit = pageFit(p);
+  if (!fit.over) { fitHint.hidden = true; return; }
+  fitHint.hidden = false;
+  fitHint.innerHTML = fit.tooLong.length
+    ? `<span>⚠️ La descripción del cuadro ${fit.tooLong[0] + 1} es demasiado larga para una hoja. Acórtala para que salga ordenada.</span>`
+    : `<span>⚠️ Esta hoja tiene más cuadros de los que caben (caben ${fit.fits} de ${fit.items.length}) y saldría desacomodada en el Word.</span>` +
+      ` <button type="button" class="secondary sm" id="fitHintSplit">Dividir en ${splitPage(p).length} hojas</button>`;
+  const b = fitHint.querySelector("#fitHintSplit");
+  if (b) b.addEventListener("click", () => applySplit([current]));
+}
+
+async function applySplit(indices, { silent = false } = {}) {
+  const idx = [...new Set(indices)].filter(i => pages[i]).sort((a, b) => b - a);
+  if (!idx.length) return 0;
+  const backup = pages.map(normalizePage);
+  const before = current;
+  idx.forEach(i => { pages.splice(i, 1, ...splitPage(pages[i]).map(normalizePage)); });
+  current = Math.min(before, pages.length - 1);
+  await persist();
+  fillForm(pages[current]);
+  renderPages();
+  review.render();
+  if (!silent) {
+    lastDeleted = { type: "restore", pages: backup, current: before };
+    showUndoToast(`Se dividieron ${idx.length} hoja(s). Ahora son ${pages.length} en total.`);
+  }
+  return idx.length;
+}
+
+const review = createSheetReview({
+  getPages: () => pages,
+  logo: "/static/logo.jpg",
+  onEdited: async (pi) => {
+    await persist();
+    if (pi === current) fillForm(pages[current]);
+    renderPages();
+    previewTableWrap.innerHTML = buildPreviewTable();
+  },
+  onSplit: (idx) => applySplit(idx)
+});
+review.attach(document.getElementById("reviewSheets"), document.getElementById("reviewSummary"));
+
+async function openReview() {
+  await saveCurrent();
+  previewTableWrap.innerHTML = buildPreviewTable();
+  review.render();
+  previewModal.hidden = false;
+}
+
+function closePreview() {
+  review.flush();
+  previewModal.hidden = true;
+  fillForm(pages[current]);
+  renderPages();
+}
+
 function buildPreviewTable() {
   const rows = pages.map((raw, i) => {
     const p = normalizePage(raw);
@@ -664,19 +734,15 @@ function buildPreviewTable() {
   `;
 }
 
-previewBtn.addEventListener("click", async () => {
-  await saveCurrent();
-  previewTableWrap.innerHTML = buildPreviewTable();
-  previewModal.hidden = false;
-});
+previewBtn.addEventListener("click", openReview);
 
-previewCloseBtn.addEventListener("click", () => { previewModal.hidden = true; });
+previewCloseBtn.addEventListener("click", closePreview);
 document.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape" || !confirmModal.hidden) return;
-  if (!previewModal.hidden) previewModal.hidden = true;
+  if (e.key !== "Escape" || !confirmModal.hidden || !fitModal.hidden) return;
+  if (!previewModal.hidden) closePreview();
   else if (!importModal.hidden) closeImportModal();
 });
-previewModal.addEventListener("click", (e) => { if (e.target === previewModal) previewModal.hidden = true; });
+previewModal.addEventListener("click", (e) => { if (e.target === previewModal) closePreview(); });
 
 // Nombre del archivo: "CAJA - <N° de caja>.docx".
 // Si el documento mezcla varias cajas, las une: "CAJA - 12 y 20.docx".
@@ -710,23 +776,37 @@ async function downloadWord() {
 
   try {
     await saveCurrent();
-    const validPages = pages.filter(p => {
+    const isValid = (p) => {
       const items = Array.isArray(p.items) ? p.items : [];
       return [p.id, p.caja, p.cod_serie, p.sobre, p.codigo, p.seccion, p.serie_doc, p.fecha_inicio, p.fecha_final, p.anio]
         .some(v => String(v ?? "").trim() !== "") || items.some(i => Object.values(i).some(v => String(v ?? "").trim() !== ""));
-    });
+    };
+    const validPages = pages.filter(isValid);
 
     if (!validPages.length) {
       showToast("Agrega al menos una página antes de descargar.", "error");
       return;
     }
 
-    const filename = buildDownloadFilename(validPages);
+    // Aviso si alguna hoja tiene más cuadros/texto de los que caben (saldría desacomodada en el Word).
+    let toSend = validPages;
+    const bad = overflowing(pages);
+    if (bad.length) {
+      const choice = await askFit(fitModal, bad.length);
+      if (choice === "review") { await openReview(); return; }
+      if (!choice) return;
+      if (choice === "split") {
+        await applySplit(bad);
+        toSend = pages.filter(isValid);
+      }
+    }
+
+    const filename = buildDownloadFilename(toSend);
 
     const response = await authFetch("/generar", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ pages: validPages, filename })
+      body: JSON.stringify({ pages: toSend, filename })
     });
 
     if (!response.ok) {
